@@ -1,0 +1,1011 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Netz-Live Flur</title>
+<meta name="description" content="Netz-Live als Flur-Anzeige: Strommix Deutschland und Anlagen nach Strompreis, wechselt alle 20 Sekunden.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Flur-Anzeige: feste Bühne 1920 × 1080, wird passend auf den Bildschirm skaliert.
+   Oben Leiste mit Ansichtswechsel, je Ansicht Titel + Erklärsatz, Inhalt, Fußzeile. Bewusst nur dunkel. */
+:root {
+  color-scheme: dark;
+  --bg: #05080b;
+  --stage: #0b1015;
+  --surface: #121920;
+  --surface-2: #18222b;
+  --surface-3: #24323e;
+  --line: rgba(255,255,255,.08);
+  --line-2: rgba(255,255,255,.18);
+  --ink: #eef2f6;
+  --ink-2: #aab6c2;
+  --ink-3: #788693;
+  --grid: #1d2833;
+  --axis: #34434f;
+  --good: #35c27a; --good-bg: rgba(53,194,122,.16);
+  --warn: #f0b43c; --warn-bg: rgba(240,180,60,.16);
+  --bad: #ef5b5b; --bad-bg: rgba(239,91,91,.16);
+  --info: #5eaee8; --info-bg: rgba(94,174,232,.18);
+  --c-kohle: #8a5f3a; --c-gas: #ef7d2f; --c-sonst: #8fdcef; --c-bio: #4e9a4e; --c-wind: #5eaee8; --c-sonne: #f5c542;
+  --c-load: #ffffff; --c-import: rgba(255,255,255,.11); --c-pumpband: rgba(143,220,239,.5); --c-fc: #9aa8b6; --c-rest: rgba(170,182,194,.2);
+  --font-ui: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font-family: var(--font-ui); -webkit-font-smoothing: antialiased; }
+body.idle, body.idle * { cursor: none !important; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+#stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px; transform: translate(-50%, -50%); transform-origin: center center; background: var(--stage); overflow: hidden; }
+
+/* Leiste oben */
+.topbar { position: absolute; left: 0; right: 0; top: 0; height: 76px; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; column-gap: 30px; padding: 0 48px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.topmid { display: flex; align-items: center; gap: 30px; }
+.logo { justify-self: end; display: block; height: 66px; width: auto; padding: 4px 8px; background: #fff; border-radius: 9px; }
+.brand { display: flex; align-items: baseline; gap: 14px; white-space: nowrap; }
+.brand b { font-size: 28px; font-weight: 700; letter-spacing: -.01em; display: inline-flex; align-items: center; gap: 12px; }
+.brand .dot { width: 13px; height: 13px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 5px var(--good-bg); }
+.brand .dot.off { background: var(--warn); box-shadow: 0 0 0 5px var(--warn-bg); }
+.brand span { font-size: 20px; color: var(--ink-2); }
+.tabs { display: flex; gap: 10px; }
+.tab { position: relative; padding: 11px 20px 13px; border-radius: 10px; font-size: 20px; color: var(--ink-3); overflow: hidden; white-space: nowrap; }
+.tab b { font-family: var(--font-mono); font-weight: 600; margin-right: 10px; }
+.tab.on { color: var(--ink); background: var(--surface-3); }
+.tab .bar { position: absolute; left: 0; bottom: 0; height: 4px; width: 0; background: var(--ink-2); }
+.paused { font-size: 16px; color: var(--warn); }
+.clockbox { display: flex; align-items: center; gap: 18px; }
+.status { font-size: 16px; color: var(--ink-2); text-align: right; line-height: 1.35; white-space: nowrap; }
+.status b { color: var(--ink); font-family: var(--font-mono); font-weight: 500; }
+.status.err { color: var(--warn); }
+.clock { font-family: var(--font-mono); font-size: 34px; font-weight: 500; letter-spacing: .01em; }
+
+/* Ansichten */
+.view { position: absolute; left: 0; right: 0; top: 76px; bottom: 0; opacity: 0; visibility: hidden; transition: opacity .9s ease, visibility 0s linear .9s; }
+.view.on { opacity: 1; visibility: visible; transition: opacity .9s ease, visibility 0s; }
+@media (prefers-reduced-motion: reduce) { .view, .view.on { transition: none; } }
+.vhead { position: absolute; left: 48px; right: 48px; top: 22px; height: 100px; display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; }
+.vhead h1 { margin: 0; font-size: 48px; font-weight: 600; letter-spacing: -.015em; line-height: 1.05; }
+.vhead p { margin: 10px 0 0; font-size: 22px; color: var(--ink-2); line-height: 1.35; max-width: 1500px; }
+.vhead .stamp { font-size: 18px; color: var(--ink-2); text-align: right; line-height: 1.5; white-space: nowrap; }
+.vhead .stamp b { color: var(--ink); font-family: var(--font-mono); font-weight: 500; }
+.card { position: absolute; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
+.card h2 { margin: 0; font-size: 23px; font-weight: 600; letter-spacing: -.005em; }
+.card h2 span { font-weight: 400; color: var(--ink-2); font-size: 19px; margin-left: 10px; }
+.vfoot { position: absolute; left: 48px; right: 48px; bottom: 16px; font-size: 15px; color: var(--ink-3); display: flex; justify-content: space-between; gap: 30px; line-height: 1.4; }
+.vfoot b { color: var(--ink-2); font-weight: 500; }
+.fshint { color: var(--ink-2); white-space: nowrap; }
+svg text { font-family: var(--font-ui); }
+svg .m { font-family: var(--font-mono); }
+
+/* Ansicht 1: Kacheln */
+.tiles { position: absolute; left: 48px; top: 140px; width: 760px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.tile { height: 191px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px 20px 14px; display: grid; grid-template-columns: minmax(0, 1fr) 112px; grid-template-rows: auto auto 1fr; column-gap: 10px; min-width: 0; }
+.tile .label { grid-column: 1 / -1; font-size: 19px; color: var(--ink-2); display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+.tile .label i { width: 13px; height: 13px; border-radius: 3px; flex: none; }
+.tile .label .pill { margin-left: auto; }
+.tile .value { font-size: 50px; font-weight: 600; line-height: 1.1; letter-spacing: -.02em; white-space: nowrap; margin-top: 4px; }
+.tile .value small { font-size: 21px; font-weight: 500; color: var(--ink-2); margin-left: 6px; letter-spacing: 0; }
+.tile svg { grid-column: 2; grid-row: 2; align-self: center; width: 112px; height: 46px; }
+.tile .sub { grid-column: 1 / -1; font-size: 16.5px; color: var(--ink-2); line-height: 1.32; align-self: end; }
+.tile .sub b { color: var(--ink); font-weight: 600; font-family: var(--font-mono); }
+.pill { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; padding: 3px 11px; border-radius: 999px; background: var(--surface-3); color: var(--ink-2); white-space: nowrap; }
+.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pill.run, .pill.dis { background: var(--good-bg); color: var(--good); }
+.pill.charge { background: var(--info-bg); color: var(--info); }
+.pill.curt { background: var(--warn-bg); color: var(--warn); }
+.pill.bad { background: var(--bad-bg); color: var(--bad); }
+
+/* Ansicht 1: Diagramm */
+#mixCard { left: 832px; right: 48px; top: 140px; height: 812px; padding: 16px 22px 8px; }
+#mixSvg { position: absolute; left: 14px; top: 56px; width: 1012px; height: 540px; }
+#mixReadout { position: absolute; left: 22px; right: 22px; top: 604px; }
+.ro-cols { display: grid; grid-template-columns: 1fr 1fr 1fr; column-gap: 30px; }
+.ro-col h3 { margin: 0 0 2px; font-size: 14px; font-weight: 600; color: var(--ink-3); text-transform: uppercase; letter-spacing: .06em; }
+.ro-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 9px; font-size: 17.5px; color: var(--ink-2); padding: 3px 0; white-space: nowrap; }
+.ro-row b { font-family: var(--font-mono); font-weight: 600; color: var(--ink); font-size: 17.5px; }
+.ro-row i { display: block; width: 20px; height: 13px; border-radius: 3px; }
+.ro-row i.line { height: 3px; border-radius: 2px; }
+.ro-row.sum { border-top: 1px solid var(--line); margin-top: 2px; padding-top: 5px; color: var(--ink); }
+.ro-note { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 15.5px; color: var(--ink-2); line-height: 1.38; }
+.ro-note b { color: var(--ink); font-weight: 600; }
+
+/* Ansicht 2: vier getrennte Karten mit eigener Kopfzeile.
+   Zeitachse von Preiskurve und Streifen liegt auf der Bühne bei x = 790 … 1720 (siehe PX0/PX1 im Skript). */
+#v2 .card { border-color: rgba(255,255,255,.14); box-shadow: 0 10px 28px rgba(0,0,0,.35); overflow: hidden; }
+.chead { position: absolute; left: 0; right: 0; top: 0; height: 46px; padding: 0 22px; display: flex; align-items: center; gap: 14px; background: var(--surface-2); border-bottom: 1px solid rgba(255,255,255,.1); white-space: nowrap; }
+.eyebrow { font-size: 15px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--ink); }
+.chead .hint { font-size: 16px; color: var(--ink-3); }
+.legend { margin-left: auto; display: flex; align-items: center; gap: 24px; font-size: 15.5px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 9px; }
+.legend i { display: inline-block; width: 24px; height: 14px; border-radius: 3px; }
+.legend i.dash { height: 0; border-top: 2px dashed var(--ink-3); border-radius: 0; width: 28px; }
+.cbody { position: absolute; left: 22px; right: 22px; top: 46px; bottom: 0; }
+#nowCard { left: 48px; top: 140px; width: 320px; height: 268px; }
+#statCard { left: 384px; top: 140px; width: 300px; height: 268px; }
+#priceCard { left: 700px; right: 48px; top: 140px; height: 268px; }
+#ganttCard { left: 48px; right: 48px; top: 424px; height: 488px; }
+#priceSvg { position: absolute; left: 22px; top: 46px; width: 1126px; height: 220px; }
+#ganttSvg { position: absolute; left: 22px; top: 46px; width: 1778px; height: 440px; }
+.nc-slot { margin-top: 18px; font-size: 17px; color: var(--ink-2); }
+.nc-big { margin-top: 6px; white-space: nowrap; line-height: 1; }
+.nc-big b { font-size: 62px; font-weight: 700; letter-spacing: -.02em; }
+.nc-big small { font-size: 21px; color: var(--ink-2); margin-left: 8px; }
+.nc-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; }
+.nc-ct { font-size: 19px; }
+.nc-rank { margin-top: 16px; font-size: 15.5px; color: var(--ink-2); line-height: 1.35; }
+.sc-item { padding: 13px 0 12px; border-top: 1px solid var(--line-2); }
+.sc-item:first-child { border-top: 0; padding-top: 14px; }
+.sc-l { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.sc-l em { font-style: normal; letter-spacing: .04em; }
+.sc-l em.neg { color: var(--bad); }
+.sc-l em.info { color: var(--info); }
+.sc-v { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-top: 3px; white-space: nowrap; }
+.sc-v b { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.sc-v span { font-size: 15.5px; color: var(--ink-2); }
+.notes { position: absolute; left: 48px; right: 48px; bottom: 12px; font-size: 13.5px; color: var(--ink-3); line-height: 1.42; }
+.notes p { margin: 0; }
+.notes sup, .card sup, svg .sup { color: var(--ink-2); }
+.loading { position: absolute; left: 0; right: 0; top: 45%; text-align: center; font-size: 28px; color: var(--ink-2); }
+</style>
+</head>
+<body>
+<div id="stage">
+  <header class="topbar">
+    <div class="brand"><b><span class="dot" id="liveDot"></span>Netz-Live</b><span>Strom in Deutschland</span></div>
+    <div class="topmid">
+      <div class="tabs">
+        <div class="tab on"><b>1</b>Übersicht<span class="bar"></span></div>
+        <div class="tab"><b>2</b>Wer läuft beim aktuellen Preis?<span class="bar"></span></div>
+      </div>
+      <span class="paused" id="paused" hidden>pausiert</span>
+      <div class="clockbox">
+        <div class="status" id="status">Daten werden geladen …</div>
+        <div class="clock" id="clock">--:--</div>
+      </div>
+    </div>
+    <img class="logo" alt="LTT Rostock – Lehrstuhl für Technische Thermodynamik" src="data:image/webp;base64,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">
+  </header>
+
+  <!-- Ansicht 1 -->
+  <section class="view on" id="v1" aria-label="Übersicht">
+    <div class="vhead">
+      <div>
+        <h1>Strom in Deutschland, gerade jetzt</h1>
+        <p>Wie viel Strom wird verbraucht, woher kommt er, und was kostet er an der Börse?</p>
+      </div>
+      <div class="stamp" id="v1Stamp"></div>
+    </div>
+    <div class="tiles" id="tiles"></div>
+    <div class="card" id="mixCard">
+      <h2>Erzeugung und Verbrauch <span id="mixSub">Leistung in GW, letzte 18 Stunden und Prognose</span></h2>
+      <svg id="mixSvg" viewBox="0 0 1012 540" role="img" aria-label="Stromerzeugung nach Quelle, Verbrauch und Import"></svg>
+      <div id="mixReadout"></div>
+    </div>
+    <div class="vfoot">
+      <span><b>Daten:</b> Bundesnetzagentur | SMARD.de (CC BY 4.0). Messwerte erscheinen mit rund einer Stunde Verzug, danach Prognose. Import = Verbrauch minus Erzeugung in Deutschland (rechnerisch).</span>
+      <span class="fshint" id="fsHint">Vollbild: Klick oder F11</span>
+    </div>
+  </section>
+
+  <!-- Ansicht 2 -->
+  <section class="view" id="v2" aria-label="Wer läuft beim aktuellen Preis">
+    <div class="vhead">
+      <div>
+        <h1>Wer läuft beim aktuellen Strompreis?</h1>
+        <p>Kraftwerke laufen, wenn der Börsenpreis über ihren Kosten liegt. Verbraucher und Speicher, wenn er unter ihrem Nutzen liegt.</p>
+      </div>
+      <div class="stamp" id="v2Stamp"></div>
+    </div>
+    <div class="card" id="nowCard">
+      <div class="chead"><span class="eyebrow">Strompreis jetzt</span></div>
+      <div class="cbody" id="nowBody"></div>
+    </div>
+    <div class="card" id="statCard">
+      <div class="chead"><span class="eyebrow">Tageswerte</span><span class="hint">€/MWh</span></div>
+      <div class="cbody" id="statBody"></div>
+    </div>
+    <div class="card" id="priceCard">
+      <div class="chead"><span class="eyebrow">Börsenpreis heute</span><span class="hint">€/MWh je Viertelstunde</span>
+        <div class="legend"><span><i class="dash"></i>Kosten der Kraftwerke¹</span></div></div>
+      <svg id="priceSvg" viewBox="0 0 1126 220" role="img" aria-label="Börsenpreis heute je Viertelstunde"></svg>
+    </div>
+    <div class="card" id="ganttCard">
+      <div class="chead"><span class="eyebrow">Wer läuft wann?</span><span class="hint">heute 0–24 Uhr · 12 Beispielanlagen</span>
+        <div class="legend">
+          <span><i style="background:var(--good)"></i>läuft / speist ein</span>
+          <span><i style="background:var(--info)"></i>Speicher lädt</span>
+          <span><i style="background:var(--warn)"></i>abgeregelt (Preis unter 0)</span>
+          <span><i style="background:var(--stage);box-shadow:inset 0 0 0 1px var(--axis)"></i>steht</span>
+          <span><i style="background:linear-gradient(90deg,rgba(53,194,122,.35),var(--good))"></i>Wind/Sonne: kräftiger = mehr Leistung</span>
+        </div></div>
+      <svg id="ganttSvg" viewBox="0 0 1778 440" role="img" aria-label="Betriebszeiten der Beispielanlagen heute"></svg>
+    </div>
+    <div class="notes">
+      <p><sup>1</sup> Kosten je MWh Strom = Brennstoff ÷ Wirkungsgrad + CO₂ + Betrieb. Mittel März–Aug. 2026: CO₂ 76 €/t, Erdgas 51 €/MWh (TTF), Steinkohle 15,5 €/MWh (API2), Braunkohle 4 €/MWh (Annahme). Wirkungsgrad: GuD 58, Gasturbine 38, Steinkohle 43, Braunkohle 40 %.</p>
+      <p><sup>2</sup> Elektrolyseur 55 kWh/kg H₂, Erlös 6 €/kg (Annahme). Wärmepumpe COP 3 und Elektrodenkessel 99 % gegen Gaskessel 92 %. Batterie 88 %, Pumpspeicher 78 %, Fahrplan nach den Tagespreisen; Schwelle = mittlerer Lade- bzw. Entladepreis.</p>
+      <p><sup>3</sup> Wind und PV: Beispielparks, skaliert aus der deutschen Einspeisung, ab Datenstand Prognose, Abregelung bei negativen Preisen. Ohne Netzentgelte, Steuern und Anfahrkosten. Daten: Bundesnetzagentur | SMARD.de (CC BY 4.0).</p>
+    </div>
+  </section>
+  <div class="loading" id="loading">Daten werden geladen …</div>
+</div>
+
+<script>
+'use strict';
+/* ---------- Konstanten ---------- */
+const TZ = 'Europe/Berlin', SLOT = 900000, DAY = 86400000, HOUR = 3600000;
+const SMARD = 'https://www.smard.de/app/chart_data';
+// Stapelreihenfolge von unten nach oben: konventionell, Speicher, erneuerbar (Farbabstände geprüft)
+const GEN = [
+  { id: 'lig',   f: 1223, label: 'Braunkohle', th: true },
+  { id: 'coal',  f: 4069, label: 'Steinkohle', th: true },
+  { id: 'gas',   f: 4071, label: 'Erdgas', th: true },
+  { id: 'oth',   f: 1227, label: 'Sonstige konv.', th: true },
+  { id: 'pump',  f: 4070, label: 'Pumpspeicher' },
+  { id: 'hydro', f: 1226, label: 'Wasserkraft', ee: true },
+  { id: 'bio',   f: 4066, label: 'Biomasse & sonst. EE', ee: true },
+  { id: 'woff',  f: 1225, label: 'Wind Offshore', ee: true },
+  { id: 'won',   f: 4067, label: 'Wind Onshore', ee: true },
+  { id: 'pv',    f: 4068, label: 'Photovoltaik', ee: true },
+];
+const EXTRA = [
+  { id: 'othRen', f: 1228 }, { id: 'load', f: 410 }, { id: 'resid', f: 4359 }, { id: 'pumpCons', f: 4387 },
+  { id: 'price', f: 4169, region: 'DE-LU' },
+  { id: 'fcPV', f: 125 }, { id: 'fcWon', f: 123 }, { id: 'fcWoff', f: 3791 }, { id: 'fcTotal', f: 122 }, { id: 'fcLoad', f: 411 },
+];
+const INSTALLED = { pv: 188, won: 186, woff: 189 };
+const REFRESH_MS = 5 * 60000;
+
+/* ---------- Zeit (Europe/Berlin) ---------- */
+const partsFmt = new Intl.DateTimeFormat('en-US', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false, weekday: 'short' });
+const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+function tzParts(ms) {
+  const p = {};
+  for (const { type, value } of partsFmt.formatToParts(ms)) p[type] = value;
+  return { y: +p.year, m: +p.month, d: +p.day, h: (+p.hour) % 24, mi: +p.minute, wd: WD.indexOf(p.weekday) };
+}
+function tzOffsetMin(ms) { const p = tzParts(ms); return (Date.UTC(p.y, p.m - 1, p.d, p.h, p.mi) - Math.floor(ms / 60000) * 60000) / 60000; }
+function midnight(ms) {
+  const p = tzParts(ms);
+  let t = Date.UTC(p.y, p.m - 1, p.d) - tzOffsetMin(ms) * 60000;
+  for (let k = 0; k < 3; k++) { // Korrektur bei Zeitumstellung zwischen ms und Mitternacht
+    const q = tzParts(t);
+    if (q.d === p.d && q.m === p.m && q.h === 0 && q.mi === 0) break;
+    t -= Date.UTC(q.y, q.m - 1, q.d, q.h, q.mi) - Date.UTC(p.y, p.m - 1, p.d);
+  }
+  return t;
+}
+function addDays(ms, n) { return midnight(midnight(ms) + n * DAY + 12 * HOUR); }
+function weekStart(ms) { const m = midnight(ms); const wd = tzParts(m).wd; return addDays(m, -((wd + 6) % 7)); }
+const fmtTime = new Intl.DateTimeFormat('de-DE', { timeZone: TZ, hour: '2-digit', minute: '2-digit' });
+const fmtTimeS = new Intl.DateTimeFormat('de-DE', { timeZone: TZ, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+const fmtDay = new Intl.DateTimeFormat('de-DE', { timeZone: TZ, weekday: 'short', day: '2-digit', month: '2-digit' });
+const fmtDayLong = new Intl.DateTimeFormat('de-DE', { timeZone: TZ, weekday: 'long', day: '2-digit', month: '2-digit' });
+const fmtDT = new Intl.DateTimeFormat('de-DE', { timeZone: TZ, weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+/* ---------- Zahlen ---------- */
+const nf = {};
+function fmt(x, d = 1) {
+  if (x === null || x === undefined || Number.isNaN(x)) return '–';
+  const k = 'd' + d;
+  if (!nf[k]) nf[k] = new Intl.NumberFormat('de-DE', { minimumFractionDigits: d, maximumFractionDigits: d });
+  return nf[k].format(x);
+}
+function fmtSigned(x, d = 1) { if (x === null || x === undefined || Number.isNaN(x)) return '–'; return (x > 0 ? '+' : x < 0 ? '−' : '±') + fmt(Math.abs(x), d); }
+function niceStep(range, target) {
+  const raw = range / target, p = Math.pow(10, Math.floor(Math.log10(raw)));
+  for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= raw) return m * p;
+  return 10 * p;
+}
+function ticks(min, max, target = 5) {
+  if (max <= min) max = min + 1;
+  const step = niceStep(max - min, target), out = [];
+  const lo = Math.floor(min / step + 1e-9) * step, hi = Math.ceil(max / step - 1e-9) * step;
+  for (let v = lo; v <= hi + step * 1e-6; v += step) out.push(+v.toFixed(10));
+  return { step, values: out };
+}
+function esc(s) { return String(s); }
+
+/* ---------- Datenhaltung ---------- */
+const store = { v: {}, installed: { pv: null, won: null, woff: null, year: null }, weeks: new Set(), updated: null, error: null };
+function val(id, ts) { const m = store.v[id]; if (!m) return null; const x = m.get(ts); return x === undefined ? null : x; }
+function mw(id, ts) { const x = val(id, ts); return x === null ? null : x * 4; }
+function genActual(ts) { // Biomasse inkl. sonstige EE
+  const b = val('bio', ts); if (b === null) return null; return b + (val('othRen', ts) || 0);
+}
+function seriesMW(id, ts) { return id === 'bio' ? (genActual(ts) === null ? null : genActual(ts) * 4) : mw(id, ts); }
+
+async function fetchJSON(url) {
+  const r = await fetch(url, { cache: 'no-cache' });
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+async function pool(items, n, fn) {
+  let i = 0; const errs = [];
+  async function worker() { while (i < items.length) { const it = items[i++]; try { await fn(it); } catch (e) { errs.push(e); } } }
+  await Promise.all(Array.from({ length: Math.min(n, items.length) }, worker));
+  return errs;
+}
+function ingest(id, series) {
+  const m = store.v[id] || (store.v[id] = new Map());
+  for (const [t, v] of series) { if (v !== null) m.set(t, v); else if (!m.has(t)) m.set(t, null); }
+}
+async function loadWeek(ws) {
+  const jobs = [...GEN, ...EXTRA].map(s => ({ s, url: `${SMARD}/${s.f}/${s.region || 'DE'}/${s.f}_${s.region || 'DE'}_quarterhour_${ws}.json` }));
+  const errs = await pool(jobs, 6, async j => { const d = await fetchJSON(j.url); if (d && d.series) ingest(j.s.id, d.series); });
+  if (errs.length === jobs.length) throw errs[0];
+  store.weeks.add(ws);
+  return errs;
+}
+async function loadInstalled() {
+  for (const [k, f] of Object.entries(INSTALLED)) {
+    try {
+      const idx = await fetchJSON(`${SMARD}/${f}/DE/index_year.json`);
+      const ts = idx.timestamps[idx.timestamps.length - 1];
+      const d = await fetchJSON(`${SMARD}/${f}/DE/${f}_DE_year_${ts}.json`);
+      const last = d.series.filter(x => x[1] !== null).pop();
+      if (last) { store.installed[k] = last[1]; store.installed.year = tzParts(last[0] + 12 * HOUR).y; }
+    } catch (e) { /* Standardwerte bleiben */ }
+  }
+  if (store.installed.pv === null) store.installed.pv = 103000;
+  if (store.installed.won === null) store.installed.won = 67700;
+  if (store.installed.woff === null) store.installed.woff = 8800;
+  for (const a of ASSETS) if (a.type === 'ee' && !a.p.instTouched) a.p.inst = Math.round(store.installed[a.src] / 100) * 100;
+}
+
+function slotsBetween(a, b) { const out = []; for (let t = a; t < b; t += SLOT) out.push(t); return out; }
+function nowSlot() { return Math.floor(Date.now() / SLOT) * SLOT; }
+function lastTs(id) { const m = store.v[id]; if (!m) return null; let best = null; for (const [t, v] of m) if (v !== null && (best === null || t > best)) best = t; return best; }
+
+/* Abgeleitete Werte je Viertelstunde */
+function derive(ts) {
+  const g = {}; let total = 0, ee = 0, any = false;
+  for (const s of GEN) { const v = seriesMW(s.id, ts); g[s.id] = v; if (v !== null) { any = true; total += v; if (s.ee) ee += v; } }
+  const load = mw('load', ts), price = val('price', ts);
+  let resid = mw('resid', ts);
+  if (resid === null && load !== null && g.won !== null && g.woff !== null && g.pv !== null) resid = load - g.won - g.woff - g.pv;
+  const fcWind = val('fcWon', ts) !== null && val('fcWoff', ts) !== null ? (val('fcWon', ts) + val('fcWoff', ts)) * 4 : null;
+  const fcPV = mw('fcPV', ts), fcTotal = mw('fcTotal', ts);
+  const fcWindPV = fcWind !== null && fcPV !== null ? fcWind + fcPV : null;
+  const windPV = any && g.won !== null && g.woff !== null && g.pv !== null ? g.won + g.woff + g.pv : null;
+  let share = null; // Wind+PV-Anteil an der Erzeugung (Ist, sonst Prognose)
+  if (windPV !== null && total > 0) share = windPV / total;
+  else if (fcWindPV !== null && fcTotal) share = fcWindPV / fcTotal;
+  // Saldo: Verbrauch (Netzlast + Pumpspeicher, der laut SMARD nicht in der Netzlast steckt) minus Erzeugung; positiv = Import
+  const pumpCons = mw('pumpCons', ts), saldo = any && load !== null ? load + (pumpCons || 0) - total : null;
+  return { ts, g, total: any ? total : null, ee: any ? ee : null, load, resid, price, fcWind, fcPV, fcWindPV, fcTotal, windPV, share, pumpCons, saldo };
+}
+
+/* ---------- Anlagen-Simulator ---------- */
+const G = { co2: 76, gas: 51, coal: 15.5 }; // Mittelwerte März–August 2026
+const GROUPS = [
+  { id: 'load', label: 'Verbraucher', note: 'Strom zu Wasserstoff und Wärme' },
+  { id: 'sto', label: 'Speicher', note: 'Tagesfahrplan' },
+  { id: 'th', label: 'Thermische Kraftwerke', note: 'nach Grenzkosten' },
+  { id: 'ee', label: 'Erneuerbare', note: 'skaliert auf Deutschland' },
+];
+const ASSETS = [
+  { id: 'ely', g: 'load', name: 'Elektrolyseur (PEM)', short: 'Elektrolyseur', type: 'ely', p: { P: 10, spec: 55, h2: 6, fee: 0, green: 0 } },
+  { id: 'hp', g: 'load', name: 'Großwärmepumpe', short: 'Wärmepumpe', type: 'heat', p: { P: 20, cop: 3.0, fee: 0 } },
+  { id: 'eboil', g: 'load', name: 'Elektrodenkessel', short: 'E-Kessel', type: 'heat', p: { P: 20, cop: 0.99, fee: 0 } },
+  { id: 'bat', g: 'sto', name: 'Batteriespeicher', short: 'Batterie', type: 'sto', p: { P: 10, E: 20, eta: 88 } },
+  { id: 'psw', g: 'sto', name: 'Pumpspeicherkraftwerk', short: 'Pumpspeicher', type: 'sto', p: { P: 300, E: 2400, eta: 78 } },
+  { id: 'ccgt', g: 'th', name: 'GuD-Kraftwerk', short: 'GuD', type: 'th', fuel: 'gas', ef: 0.202, p: { P: 450, eta: 58, vom: 3 } },
+  { id: 'ocgt', g: 'th', name: 'Gasturbine (Spitzenlast)', short: 'Gasturbine', type: 'th', fuel: 'gas', ef: 0.202, p: { P: 150, eta: 38, vom: 4 } },
+  { id: 'coalp', g: 'th', name: 'Steinkohlekraftwerk', short: 'Steinkohle', type: 'th', fuel: 'coal', ef: 0.341, p: { P: 700, eta: 43, vom: 5 } },
+  { id: 'ligp', g: 'th', name: 'Braunkohlekraftwerk', short: 'Braunkohle', type: 'th', fuel: 'lig', ef: 0.40, p: { P: 900, eta: 40, vom: 6, fuelPrice: 4 } },
+  { id: 'pvp', g: 'ee', name: 'PV-Park', short: 'PV', type: 'ee', src: 'pv', p: { P: 50, curtail: true, inst: 103000 } },
+  { id: 'wonp', g: 'ee', name: 'Windpark an Land', short: 'Wind an Land', type: 'ee', src: 'won', p: { P: 30, curtail: true, inst: 67700 } },
+  { id: 'woffp', g: 'ee', name: 'Windpark auf See', short: 'Wind auf See', type: 'ee', src: 'woff', p: { P: 500, curtail: true, inst: 8800 } },
+];
+// Erdgas: TTF-Preis gilt je MWh Brennwert (Hs), Wirkungsgrade und CO2-Faktor beziehen sich auf den Heizwert (Hi); Hs/Hi = 1,11
+const HS_HI = 1.11;
+function fuelPrice(a) { return a.fuel === 'gas' ? G.gas * HS_HI : a.fuel === 'coal' ? G.coal : a.p.fuelPrice; }
+function marginalCost(a) { const eta = a.p.eta / 100; return fuelPrice(a) / eta + G.co2 * a.ef / eta + a.p.vom; }
+function heatRef() { return G.gas * HS_HI / 0.92 + G.co2 * 0.202 / 0.92; }
+function elyBreakEven(a) { return a.p.h2 * 1000 / a.p.spec - a.p.fee; }
+
+function planStorage(prices, P, E, eta) {
+  // Laden mit P, Entladen mit P·η: je Paar wird die geladene Energie abzüglich Verluste wieder abgegeben
+  const n = prices.length, dt = 0.25, ec = Math.sqrt(eta), ed = Math.sqrt(eta);
+  const power = new Array(n).fill(0);
+  const pairs = [];
+  for (let i = 0; i < n; i++) { if (prices[i] === null) continue; for (let j = i + 1; j < n; j++) { if (prices[j] === null) continue; const gain = prices[j] * eta - prices[i]; if (gain > 0.01) pairs.push([gain, i, j]); } }
+  pairs.sort((a, b) => b[0] - a[0]);
+  function feasible() { let soc = 0; for (let k = 0; k < n; k++) { const pw = power[k]; if (pw < 0) soc += -pw * dt * ec; else if (pw > 0) soc -= pw * dt / ed; if (soc < -1e-6 || soc > E + 1e-6) return false; } return true; }
+  for (const [, i, j] of pairs) { if (power[i] !== 0 || power[j] !== 0) continue; power[i] = -P; power[j] = P * eta; if (!feasible()) { power[i] = 0; power[j] = 0; } }
+  const soc = []; let s = 0; for (let k = 0; k < n; k++) { const pw = power[k]; if (pw < 0) s += -pw * dt * ec; else if (pw > 0) s -= pw * dt / ed; soc.push(s); }
+  return { power, soc };
+}
+
+/* Liefert Zeitreihe & Kennzahlen einer Anlage über die Viertelstunden `slots` */
+function simulate(a, slots) {
+  const data = slots.map(derive), n = slots.length, dt = 0.25;
+  const out = { curt: new Array(n).fill(false), run: new Array(n).fill(false), power: new Array(n).fill(null), known: new Array(n).fill(false), fc: new Array(n).fill(false), soc: null, thresholds: [], metrics: [], nowIdx: -1 };
+  const ns = nowSlot(); out.nowIdx = slots.indexOf(ns);
+  const genEnd = lastTs('pv');
+  if (a.type === 'th') {
+    const mc = marginalCost(a); out.thresholds.push({ v: mc, side: 'gen', label: a.short });
+    let h = 0, rev = 0, marg = 0;
+    data.forEach((d, i) => { if (d.price === null) return; out.known[i] = true; const run = d.price >= mc; out.run[i] = run; out.power[i] = run ? a.p.P : 0; if (run) { h += dt; rev += a.p.P * dt * d.price; marg += a.p.P * dt * (d.price - mc); } });
+    const eta = a.p.eta / 100;
+    out.mc = mc; out.hours = h;
+    out.metrics = [
+      { l: 'Grenzkosten', v: fmt(mc, 1), u: '€/MWh' },
+      { l: 'Volllaststunden', v: fmt(h, 1), u: 'h' },
+      { l: 'Erlös', v: fmt(rev / 1000, 1), u: 'T€' },
+      { l: 'Deckungsbeitrag', v: fmt(marg / 1000, 1), u: 'T€' },
+      { l: 'CO₂-Ausstoß', v: fmt(a.p.P * h / eta * a.ef, 0), u: 't' },
+      { l: 'Brennstoff', v: fmt(a.p.P * h / eta, 0), u: 'MWh(th)' },
+    ];
+    const dn = out.nowIdx >= 0 ? data[out.nowIdx] : null;
+    if (!dn || dn.price === null) out.now = { cls: 'na', text: 'kein Preis', why: 'Für die aktuelle Viertelstunde liegt kein Preis vor.', key: '' };
+    else { const sp = dn.price - mc, cs = sp + a.p.vom; out.now = { cls: sp >= 0 ? 'run' : 'idle', text: sp >= 0 ? 'läuft' : 'steht', why: `Day-Ahead ${fmt(dn.price, 1)} €/MWh ${sp >= 0 ? '≥' : '<'} Grenzkosten ${fmt(mc, 1)} €/MWh, Marge ${fmtSigned(sp, 1)} €/MWh, das sind ${fmtSigned(sp * a.p.P / 1000, 1)} T€/h bei ${fmt(a.p.P, 0)} MW. ${a.fuel === 'gas' ? 'Clean Spark Spread' : 'Clean Dark Spread'} (vor variablen Kosten) ${fmtSigned(cs, 1)} €/MWh.`, key: `Marge ${fmtSigned(sp, 0)} €/MWh` }; }
+  }
+  if (a.type === 'ely') {
+    const be = elyBreakEven(a); out.thresholds.push({ v: be, side: 'load', label: a.short });
+    let h = 0, cost = 0, rev = 0, blockedGreen = 0;
+    const kgph = a.p.P * 1000 / a.p.spec;
+    data.forEach((d, i) => { if (d.price === null) return; out.known[i] = true; if (d.ts > genEnd) out.fc[i] = true; const priceOk = d.price <= be; const greenOk = a.p.green > 0 ? (d.share !== null && d.share * 100 >= a.p.green) : true; const run = priceOk && greenOk; if (priceOk && !greenOk) blockedGreen += dt; out.run[i] = run; out.power[i] = run ? a.p.P : 0; if (run) { h += dt; cost += a.p.P * dt * (d.price + a.p.fee); rev += kgph * dt * a.p.h2; } });
+    out.be = be; out.hours = h;
+    out.metrics = [
+      { l: 'Break-even-Strompreis', v: fmt(be, 1), u: '€/MWh' },
+      { l: 'Betriebsstunden', v: fmt(h, 1), u: 'h' },
+      { l: 'Wasserstoff', v: fmt(kgph * h / 1000, 2), u: 't' },
+      { l: 'Strombezug', v: fmt(a.p.P * h, 0), u: 'MWh' },
+      { l: 'Ø Strompreis im Betrieb', v: h ? fmt((cost / (a.p.P * h)) - a.p.fee, 1) : '–', u: '€/MWh' },
+      { l: 'Marge (H₂-Erlös − Strom)', v: fmt((rev - cost) / 1000, 1), u: 'T€' },
+    ];
+    if (a.p.green > 0) out.metrics[1].sub = `${fmt(blockedGreen, 1)} h durch Grünstromregel blockiert`;
+    const dn = out.nowIdx >= 0 ? data[out.nowIdx] : null;
+    if (!dn || dn.price === null) out.now = { cls: 'na', text: 'kein Preis', why: 'Für die aktuelle Viertelstunde liegt kein Preis vor.', key: '' };
+    else {
+      const priceOk = dn.price <= be, greenOk = a.p.green > 0 ? (dn.share !== null && dn.share * 100 >= a.p.green) : true;
+      const m = (be - dn.price) * a.p.P / 1000;
+      const shareTxt = dn.share !== null ? ` Wind+PV-Anteil ${fmt(dn.share * 100, 0)} %.` : '';
+      if (priceOk && greenOk) out.now = { cls: 'run', text: 'läuft', why: `Day-Ahead ${fmt(dn.price, 1)} €/MWh ≤ Break-even ${fmt(be, 1)} €/MWh: ${fmt(kgph, 0)} kg H₂/h für ${fmt((dn.price + a.p.fee) * a.p.spec / 1000, 2)} €/kg Stromkosten, Marge ${fmtSigned(m, 1)} T€/h.${shareTxt}`, key: `Marge ${fmtSigned(be - dn.price, 0)} €/MWh` };
+      else if (!priceOk) out.now = { cls: 'idle', text: 'steht', why: `Day-Ahead ${fmt(dn.price, 1)} €/MWh liegt über dem Break-even von ${fmt(be, 1)} €/MWh, jede MWh Strom würde ${fmt(dn.price - be, 1)} € Verlust bringen.${shareTxt}`, key: `Preis ${fmt(dn.price - be, 0)} €/MWh zu hoch` };
+      else out.now = { cls: 'idle', text: 'steht', why: `Der Preis passt (${fmt(dn.price, 1)} €/MWh), aber der Wind+PV-Anteil von ${fmt(dn.share * 100, 0)} % liegt unter der Schwelle von ${a.p.green} %.`, key: `Grünstromregel greift` };
+    }
+  }
+  if (a.type === 'heat') {
+    const ref = heatRef(), be = ref * a.p.cop - a.p.fee; out.thresholds.push({ v: be, side: 'load', label: a.short });
+    let h = 0, heat = 0, save = 0;
+    data.forEach((d, i) => { if (d.price === null) return; out.known[i] = true; const hc = (d.price + a.p.fee) / a.p.cop; const run = hc < ref; out.run[i] = run; out.power[i] = run ? a.p.P : 0; if (run) { h += dt; heat += a.p.P * a.p.cop * dt; save += (ref - hc) * a.p.P * a.p.cop * dt; } });
+    out.be = be; out.hours = h;
+    out.metrics = [
+      { l: 'Gaskessel-Wärmekosten', v: fmt(ref, 1), u: '€/MWh(th)' },
+      { l: 'Läuft bis Strompreis', v: fmt(be, 1), u: '€/MWh' },
+      { l: 'Betriebsstunden', v: fmt(h, 1), u: 'h' },
+      { l: 'Wärme', v: fmt(heat, 0), u: 'MWh(th)' },
+      { l: 'Ersparnis gegen Gaskessel', v: fmt(save / 1000, 1), u: 'T€' },
+      { l: 'Vermiedenes Gaskessel-CO₂', v: fmt(heat * 0.202 / 0.92, 0), u: 't' },
+    ];
+    const dn = out.nowIdx >= 0 ? data[out.nowIdx] : null;
+    if (!dn || dn.price === null) out.now = { cls: 'na', text: 'kein Preis', why: 'Für die aktuelle Viertelstunde liegt kein Preis vor.', key: '' };
+    else { const hc = (dn.price + a.p.fee) / a.p.cop; const run = hc < ref; out.now = { cls: run ? 'run' : 'idle', text: run ? 'läuft' : 'steht', why: `Wärme aus Strom kostet ${fmt(hc, 1)} €/MWh(th) (${fmt(dn.price, 1)} €/MWh Strom${a.p.fee ? ' + ' + fmt(a.p.fee, 0) + ' Abgaben' : ''}, COP ${fmt(a.p.cop, 2)}), der Gaskessel ${fmt(ref, 1)} €/MWh(th). ${run ? 'Strom ist die günstigere Wärmequelle.' : 'Gas ist gerade günstiger.'}`, key: `${fmt(hc, 0)} vs. ${fmt(ref, 0)} €/MWh(th)` }; }
+  }
+  if (a.type === 'ee') {
+    const inst = a.p.inst || 1, fcId = a.src === 'pv' ? 'fcPV' : a.src === 'won' ? 'fcWon' : 'fcWoff';
+    let energy = 0, rev = 0, curt = 0, h = 0, psum = 0, pn = 0;
+    data.forEach((d, i) => {
+      let nat = d.g[a.src]; let isFc = false;
+      if (nat === null) { nat = mw(fcId, d.ts); isFc = true; }
+      if (nat === null) return;
+      out.known[i] = true; out.fc[i] = isFc;
+      let pw = a.p.P * nat / inst;
+      if (d.price !== null) { psum += d.price; pn++; }
+      if (a.p.curtail && d.price !== null && d.price < 0 && pw > 0) { curt += pw * dt; pw = 0; out.curt[i] = true; }
+      out.run[i] = pw > 0.005 * a.p.P; out.power[i] = pw;
+      if (pw > 0) { energy += pw * dt; h += dt; if (d.price !== null) rev += pw * dt * d.price; }
+    });
+    const mv = energy ? rev / energy : null, avgP = pn ? psum / pn : null;
+    out.thresholds.push({ v: 0, side: 'gen', label: a.short, note: a.p.curtail ? 'abregeln < 0' : '' });
+    out.metrics = [
+      { l: 'Energie', v: fmt(energy, 0), u: 'MWh' },
+      { l: 'Volllaststunden', v: fmt(energy / a.p.P, 1), u: 'h' },
+      { l: 'Erlös', v: fmt(rev / 1000, 1), u: 'T€' },
+      { l: 'Marktwert', v: mv === null ? '–' : fmt(mv, 1), u: '€/MWh' },
+      { l: 'Marktwertfaktor', v: mv !== null && avgP ? fmt(mv / avgP, 2) : '–', u: `(Ø ${avgP === null ? '–' : fmt(avgP, 0)} €/MWh)` },
+      { l: 'Abgeregelt', v: fmt(curt, 0), u: 'MWh' },
+    ];
+    const kTs = genEnd, dk = kTs !== null ? derive(kTs) : null, dn = out.nowIdx >= 0 ? data[out.nowIdx] : null;
+    if (!dk || dk.g[a.src] === null) out.now = { cls: 'na', text: 'keine Daten', why: 'Noch keine Einspeisedaten.', key: '' };
+    else {
+      const cf = dk.g[a.src] / inst, pw = a.p.P * cf, pNow = dn ? dn.price : null;
+      if (a.p.curtail && pNow !== null && pNow < 0 && pw > 0) out.now = { cls: 'curt', text: 'abgeregelt', why: `Der Preis ist negativ (${fmt(pNow, 1)} €/MWh). Ohne Abregelung würden ${fmt(pw, 1)} MW (${fmt(cf * 100, 0)} % der Nennleistung) einspeisen und ${fmt(-pw * pNow / 1000, 2)} T€/h kosten.`, key: `Preis ${fmt(pNow, 0)} €/MWh` };
+      else if (pw > 0.005 * a.p.P) out.now = { cls: 'run', text: 'speist ein', why: `${fmt(pw, 1)} MW, das sind ${fmt(cf * 100, 0)} % der Nennleistung (Deutschland: ${fmt(dk.g[a.src] / 1000, 1)} GW von ${fmt(inst / 1000, 0)} GW installiert, Datenstand ${fmtTime.format(kTs)} Uhr).${pNow !== null ? ` Erlös ${fmt(pw * pNow / 1000, 2)} T€/h bei ${fmt(pNow, 1)} €/MWh.` : ''}`, key: `${fmt(cf * 100, 0)} % Auslastung` };
+      else out.now = { cls: 'idle', text: 'steht', why: a.src === 'pv' ? 'Keine Einstrahlung, die Anlage liefert nichts.' : 'Praktisch kein Wind.', key: `${fmt(cf * 100, 0)} % Auslastung` };
+    }
+  }
+  if (a.type === 'sto') {
+    const eta = a.p.eta / 100; out.soc = new Array(n).fill(null);
+    let rev = 0, eCh = 0, eDis = 0, pCh = 0, pDis = 0;
+    // je Kalendertag ein Fahrplan
+    let i = 0, d0 = midnight(slots[0]);
+    while (i < n) {
+      const d1 = addDays(d0, 1); let j = i; while (j < n && slots[j] < d1) j++;
+      const prices = data.slice(i, j).map(d => d.price);
+      if (prices.some(p => p !== null)) {
+        const plan = planStorage(prices, a.p.P, a.p.E, eta);
+        for (let k = i; k < j; k++) { const pw = plan.power[k - i]; out.known[k] = prices[k - i] !== null; out.power[k] = pw; out.run[k] = pw !== 0; out.soc[k] = plan.soc[k - i] / a.p.E; const p = prices[k - i]; if (p === null) continue; if (pw > 0) { rev += pw * 0.25 * p; eDis += pw * 0.25; pDis += pw * 0.25 * p; } else if (pw < 0) { rev += pw * 0.25 * p; eCh += -pw * 0.25; pCh += -pw * 0.25 * p; } }
+      }
+      i = j; d0 = d1;
+    }
+    const avgCh = eCh ? pCh / eCh : null, avgDis = eDis ? pDis / eDis : null;
+    if (avgCh !== null) out.thresholds.push({ v: avgCh, side: 'load', label: a.short + ' lädt', note: 'Ø Ladepreis' });
+    if (avgDis !== null) out.thresholds.push({ v: avgDis, side: 'gen', label: a.short + ' entlädt', note: 'Ø Entladepreis' });
+    out.metrics = [
+      { l: 'Arbitrage-Erlös', v: fmt(rev / 1000, 1), u: 'T€' },
+      { l: 'Ø Lade- / Entladepreis', v: `${avgCh === null ? '–' : fmt(avgCh, 0)} / ${avgDis === null ? '–' : fmt(avgDis, 0)}`, u: '€/MWh' },
+      { l: 'Spread', v: avgCh !== null && avgDis !== null ? fmt(avgDis - avgCh, 0) : '–', u: '€/MWh' },
+      { l: 'Vollzyklen', v: fmt(eDis / a.p.E, 2), u: '' },
+      { l: 'Geladen / entladen', v: `${fmt(eCh, 0)} / ${fmt(eDis, 0)}`, u: 'MWh' },
+      { l: 'Erlös je MW und Tag', v: fmt(rev / a.p.P / Math.max(1, Math.round((slots[n - 1] - slots[0] + SLOT) / DAY)), 0), u: '€' },
+    ];
+    const k = out.nowIdx;
+    if (k < 0 || !out.known[k]) out.now = { cls: 'na', text: 'kein Preis', why: 'Für die aktuelle Viertelstunde liegt kein Preis vor.', key: '' };
+    else { const pw = out.power[k], soc = out.soc[k], p = data[k].price; out.now = pw > 0 ? { cls: 'dis', text: 'entlädt', why: `Entlädt mit ${fmt(pw, 0)} MW bei ${fmt(p, 1)} €/MWh, Ladestand danach ${fmt(soc * 100, 0)} %. Fahrplan gegen die Day-Ahead-Preise des Tages, Ø Ladepreis ${avgCh === null ? '–' : fmt(avgCh, 0)} €/MWh.`, key: `SoC ${fmt(soc * 100, 0)} %` } : pw < 0 ? { cls: 'charge', text: 'lädt', why: `Lädt mit ${fmt(-pw, 0)} MW bei ${fmt(p, 1)} €/MWh, Ladestand danach ${fmt(soc * 100, 0)} %. Entladen ist im Tagesfahrplan zu Ø ${avgDis === null ? '–' : fmt(avgDis, 0)} €/MWh geplant.`, key: `SoC ${fmt(soc * 100, 0)} %` } : { cls: 'idle', text: 'wartet', why: `Kein Handel in dieser Viertelstunde (${fmt(p, 1)} €/MWh). Ladestand ${fmt(soc * 100, 0)} %, Tagesspread ${avgCh !== null && avgDis !== null ? fmt(avgDis - avgCh, 0) : '–'} €/MWh.`, key: `SoC ${fmt(soc * 100, 0)} %` }; }
+  }
+  return out;
+}
+
+
+/* ================= Flur-Anzeige ================= */
+const ROTATE_MS = 30000;            // Wechsel der Ansichten
+const $ = s => document.querySelector(s);
+const NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+function stxt(parent, attrs, text) { const t = el('text', attrs, parent); t.textContent = text; return t; }
+function html(tag, cls, parent, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; if (parent) parent.appendChild(e); return e; }
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const C = {};
+for (const n of ['stage', 'ink', 'ink-2', 'ink-3', 'grid', 'axis', 'surface', 'surface-2', 'surface-3', 'good', 'warn', 'bad', 'info', 'good-bg', 'warn-bg', 'info-bg', 'c-kohle', 'c-gas', 'c-sonst', 'c-bio', 'c-wind', 'c-sonne', 'c-load', 'c-import', 'c-pumpband', 'c-fc', 'c-rest']) C[n] = css('--' + n);
+const gw = x => x === null || x === undefined ? null : x / 1000;
+
+/* Bühne auf den Bildschirm skalieren */
+const stage = $('#stage');
+function fit() { const s = Math.min(innerWidth / 1920, innerHeight / 1080); stage.style.transform = `translate(-50%, -50%) scale(${s})`; }
+addEventListener('resize', () => { fit(); updateFsHint(); });
+fit();
+
+/* Zeitfenster Ansicht 1: letzte 18 h und 6 h Prognose */
+function windowBounds() { const start = Math.floor((Date.now() - 18 * HOUR) / HOUR) * HOUR; return { start, end: start + 24 * HOUR }; }
+function hourTicks(start, end, stepH) {
+  const out = [];
+  for (let t = Math.ceil(start / HOUR) * HOUR; t <= end; t += HOUR) { const p = tzParts(t); if (p.mi === 0 && p.h % stepH === 0) out.push({ t, label: p.h === 0 ? fmtDay.format(t) : String(p.h).padStart(2, '0') + ':00', major: p.h === 0 }); }
+  return out;
+}
+function nowPill(svg, x, y, label, right) {
+  const w = label.length * 9.6 + 18, rx = right === false || x + 8 + w > right ? x - 8 - w : x + 8;
+  el('rect', { x: rx, y, width: w, height: 26, rx: 6, fill: C.surface, stroke: C['ink-3'], 'stroke-width': 1 }, svg);
+  stxt(svg, { x: rx + w / 2, y: y + 18.5, 'text-anchor': 'middle', 'font-size': 16, fill: C.ink, class: 'm' }, label);
+}
+function kpiTs() { const g = lastTs('pv'), l = lastTs('load'); return g !== null && l !== null ? Math.min(g, l) : null; }
+function priceRank(p, list) {
+  const n = list.length; if (!n || p === null) return null;
+  const higher = list.filter(x => x > p).length, lower = list.filter(x => x < p).length, share = higher / n;
+  const cls = p < 0 ? 'charge' : share >= 2 / 3 ? 'run' : share <= 1 / 3 ? 'curt' : '';
+  const lbl = p < 0 ? 'negativ' : share >= 2 / 3 ? 'günstig' : share <= 1 / 3 ? 'teuer' : 'mittel';
+  const text = lower === 0 ? 'günstigste Viertelstunde des Tages' : higher === 0 ? 'teuerste Viertelstunde des Tages' : `günstiger als ${fmt(share * 100, 0)} % der Viertelstunden heute`;
+  return { cls, lbl, text };
+}
+function todayPrices() { const t0 = midnight(Date.now()); return slotsBetween(t0, addDays(t0, 1)).map(t => val('price', t)); }
+
+/* ---------- Ansicht 1: Kacheln ---------- */
+function sparkline(values, color) {
+  const W = 128, H = 52, n = values.length;
+  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: 'none', 'aria-hidden': 'true' });
+  const vals = values.filter(v => v !== null); if (vals.length < 2) return svg;
+  let mn = Math.min(0, ...vals), mx = Math.max(...vals); if (mx === mn) mx = mn + 1;
+  const X = i => i / (n - 1) * W, Y = v => H - 3 - (v - mn) / (mx - mn) * (H - 8);
+  let d = '', first = -1, last = -1;
+  values.forEach((v, i) => { if (v === null) return; if (first < 0) first = i; last = i; d += (d ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(v).toFixed(1); });
+  if (mn < 0) el('line', { x1: 0, x2: W, y1: Y(0), y2: Y(0), stroke: C.axis, 'stroke-width': 1 }, svg);
+  el('path', { d: d + `L${X(last).toFixed(1)},${Y(Math.max(0, mn)).toFixed(1)}L${X(first).toFixed(1)},${Y(Math.max(0, mn)).toFixed(1)}Z`, fill: color, opacity: .14 }, svg);
+  el('path', { d, fill: 'none', stroke: color, 'stroke-width': 2.2, 'stroke-linejoin': 'round', 'vector-effect': 'non-scaling-stroke' }, svg);
+  el('circle', { cx: X(last), cy: Y(values[last]), r: 3.5, fill: color }, svg);
+  return svg;
+}
+function renderTiles() {
+  const box = $('#tiles'); box.replaceChildren();
+  const kTs = kpiTs(), k = kTs !== null ? derive(kTs) : null;
+  const { start } = windowBounds();
+  const past = kTs !== null ? slotsBetween(start, kTs + SLOT).map(derive) : [];
+  function tile(o) {
+    const t = html('div', 'tile', box), l = html('div', 'label', t);
+    if (o.color) { const i = document.createElement('i'); i.style.background = o.color; l.appendChild(i); }
+    l.appendChild(document.createTextNode(o.label));
+    if (o.pill) html('span', 'pill ' + o.pill[0], l, o.pill[1]);
+    const v = html('div', 'value', t, o.value); if (o.unit) html('small', '', v, o.unit);
+    if (o.spark) t.appendChild(sparkline(o.spark, o.color || C['ink-2']));
+    const s = html('div', 'sub', t); for (const part of o.sub) { if (Array.isArray(part)) html('b', '', s, part[0]); else s.append(part); }
+  }
+  const f1 = x => x === null ? '–' : fmt(x, 1);
+  const sp = f => past.map(f);
+  tile({ label: 'Stromverbrauch (Netzlast)', value: k ? f1(gw(k.load)) : '–', unit: 'GW', spark: sp(d => gw(d.load)), sub: ['Leistung, die ganz Deutschland gerade aus dem Stromnetz bezieht'] });
+  const wind = d => d.g.won !== null && d.g.woff !== null ? gw(d.g.won + d.g.woff) : null;
+  tile({ label: 'Wind', color: C['c-wind'], value: k ? f1(wind(k)) : '–', unit: 'GW', spark: sp(wind), sub: k ? ['an Land ', [f1(gw(k.g.won))], ' · auf See ', [f1(gw(k.g.woff))], ' GW'] : ['–'] });
+  const instPV = store.installed.pv;
+  tile({ label: 'Sonne (Photovoltaik)', color: C['c-sonne'], value: k ? f1(gw(k.g.pv)) : '–', unit: 'GW', spark: sp(d => gw(d.g.pv)), sub: k && instPV ? ['Auslastung ', [fmt(k.g.pv / instPV * 100, 0) + ' %'], ` von ${fmt(instPV / 1000, 0)} GW installierter Leistung`] : ['–'] });
+  const ee = d => d.total ? d.ee / d.total * 100 : null;
+  tile({ label: 'Erneuerbare', value: k ? fmt(ee(k), 0) : '–', unit: '%', spark: sp(ee), sub: ['Anteil an der Stromerzeugung in Deutschland: Wind, Sonne, Biomasse, Wasser'] });
+  tile({ label: 'Residuallast', value: k ? f1(gw(k.resid)) : '–', unit: 'GW', spark: sp(d => gw(d.resid)), sub: k && k.resid < 0 ? ['negativ: Wind und Sonne liefern mehr, als verbraucht wird'] : ['Verbrauch minus Wind und Sonne: Rest für Kraftwerke, Speicher, Import'] });
+  const therm = d => { let s = 0; for (const g of GEN) { if (!g.th) continue; if (d.g[g.id] === null) return null; s += d.g[g.id]; } return gw(s); };
+  tile({ label: 'Kohle- und Gaskraftwerke', value: k ? f1(therm(k)) : '–', unit: 'GW', spark: sp(therm), sub: k ? ['Kohle ', [f1(gw(k.g.lig + k.g.coal))], ' · Gas ', [f1(gw(k.g.gas))], ' · Sonstige ', [f1(gw(k.g.oth))], ' GW'] : ['–'] });
+  const sal = d => gw(d.saldo);
+  const imp = k && k.saldo !== null ? k.saldo >= 0 : true, pump = k ? gw(k.pumpCons || 0) : 0;
+  tile({ label: imp ? 'Import aus Nachbarländern' : 'Export ins Ausland', value: k && k.saldo !== null ? f1(Math.abs(gw(k.saldo))) : '–', unit: 'GW', spark: sp(sal),
+    sub: k && k.saldo !== null ? ['Netzlast ', [f1(gw(k.load))], ...(pump >= 0.05 ? [' + Pumpspeicher ', [f1(pump)]] : []), ' − Erzeugung ', [f1(gw(k.total))], ' GW'] : ['–'] });
+  const ns = nowSlot(), p = val('price', ns), tp = todayPrices(), rk = priceRank(p, tp.filter(x => x !== null));
+  tile({ label: 'Börsenstrompreis', value: p === null ? '–' : fmt(p, 1), unit: '€/MWh', pill: rk ? [rk.cls, rk.lbl] : null, spark: slotsBetween(windowBounds().start, ns + SLOT).map(t => val('price', t)), sub: p === null ? ['noch kein Preis für diese Viertelstunde'] : ['= ', [fmt(p / 10, 1) + ' ct/kWh'], ' · ' + (rk ? rk.text.replace(' der Viertelstunden heute', ' des Tages') : '')] });
+}
+
+/* ---------- Ansicht 1: Diagramm (rechts, volle Höhe) ---------- */
+const MIX = [
+  { id: 'kohle', label: 'Kohle', parts: ['lig', 'coal'] },
+  { id: 'gas', label: 'Erdgas', parts: ['gas'] },
+  { id: 'sonst', label: 'Sonstige & Pumpspeicher', parts: ['oth', 'pump'] },
+  { id: 'bio', label: 'Biomasse & Wasser', parts: ['bio', 'hydro'] },
+  { id: 'wind', label: 'Wind', parts: ['won', 'woff'] },
+  { id: 'sonne', label: 'Sonne', parts: ['pv'] },
+];
+const MW = 1012, MH = 540;
+function renderMix() {
+  const svg = $('#mixSvg'); svg.replaceChildren();
+  const P = { x: 56, y: 36, w: MW - 56 - 14, h: MH - 36 - 38 };
+  const { start, end } = windowBounds(), slots = slotsBetween(start, end), n = slots.length, data = slots.map(derive);
+  const genEnd = lastTs('pv'), loadEnd = lastTs('load');
+  const X = i => P.x + i / (n - 1) * P.w;
+  const lastIdx = genEnd === null ? -1 : Math.min(n - 1, Math.floor((genEnd - start) / SLOT));
+  const loadIdx = loadEnd === null ? -1 : Math.min(n - 1, Math.floor((loadEnd - start) / SLOT));
+  const st = data.map((d, i) => { if (d.total === null || i > lastIdx) return null; let acc = 0; const L = {}; for (const g of MIX) { const v = g.parts.reduce((a, p) => a + (d.g[p] || 0), 0); L[g.id] = [acc, acc + v]; acc += v; } return { L, top: acc }; });
+  const cons = d => d.load === null ? null : d.load + (d.pumpCons || 0);
+  // Prognose ab Datenstand: Verbrauch, Wind, Sonne
+  const fc = data.map((d, i) => {
+    if (i < Math.max(0, lastIdx)) return null;
+    const wind = val('fcWon', d.ts) !== null && val('fcWoff', d.ts) !== null ? (val('fcWon', d.ts) + val('fcWoff', d.ts)) * 4 : null, sun = mw('fcPV', d.ts), load = mw('fcLoad', d.ts);
+    return wind === null || sun === null ? null : { wind, sun, load };
+  });
+  let ymax = 10;
+  data.forEach((d, i) => { if (st[i]) ymax = Math.max(ymax, gw(st[i].top)); if (i <= loadIdx && cons(d) !== null) ymax = Math.max(ymax, gw(cons(d))); const f = fc[i]; if (f) ymax = Math.max(ymax, gw(Math.max(f.load || 0, (f.load !== null ? Math.max(0, f.load - f.wind - f.sun) : 0) + f.wind + f.sun))); });
+  const tk = ticks(0, ymax * 1.12, 7), yTop = tk.values[tk.values.length - 1];
+  const Y = mw => P.y + P.h - (mw / 1000) / yTop * P.h;
+  const xz = lastIdx >= 0 ? X(lastIdx) : P.x;
+  // Hintergrund Prognosebereich
+  if (lastIdx < n - 1) {
+    el('rect', { x: xz, y: P.y, width: P.x + P.w - xz, height: P.h, fill: C['surface-2'] }, svg);
+    if (xz > P.x) el('line', { x1: xz, x2: xz, y1: P.y - 26, y2: P.y + P.h, stroke: C['ink-3'], 'stroke-width': 1.5 }, svg);
+    if (xz - P.x > 130) stxt(svg, { x: xz - 10, y: P.y - 11, 'text-anchor': 'end', 'font-size': 18, fill: C['ink-2'], 'font-weight': 600 }, '◀ Messwerte');
+    if (P.x + P.w - xz > 120) stxt(svg, { x: xz + 10, y: P.y - 11, 'font-size': 18, fill: C['ink-2'], 'font-weight': 600 }, 'Prognose ▶');
+  }
+  // Raster
+  for (const v of tk.values) { el('line', { x1: P.x, x2: P.x + P.w, y1: Y(v * 1000), y2: Y(v * 1000), stroke: C.grid, 'stroke-width': 1 }, svg); stxt(svg, { x: P.x - 10, y: Y(v * 1000) + 6, 'text-anchor': 'end', 'font-size': 16, fill: C['ink-3'], class: 'm' }, fmt(v, 0)); }
+  stxt(svg, { x: P.x - 10, y: P.y - 11, 'text-anchor': 'end', 'font-size': 16, fill: C['ink-3'], class: 'm' }, 'GW');
+  // Messwerte: Stapel
+  for (const g of MIX) {
+    let d = '', back = '';
+    for (let i = 0; i <= lastIdx; i++) { if (!st[i]) continue; d += (d ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(st[i].L[g.id][1]).toFixed(1); back = 'L' + X(i).toFixed(1) + ',' + Y(st[i].L[g.id][0]).toFixed(1) + back; }
+    if (d) el('path', { d: d + back + 'Z', fill: C['c-' + g.id], stroke: C.surface, 'stroke-width': 1.2, 'stroke-linejoin': 'round' }, svg);
+  }
+  // Messwerte: Import-Lücke, Pumpspeicher-Band
+  const lim = Math.min(lastIdx, loadIdx);
+  let up = '', down = '', pu = '', pd = '', best = null;
+  for (let i = 0; i <= lim; i++) {
+    const d = data[i]; if (!st[i] || cons(d) === null) continue;
+    const top = st[i].top, c = cons(d), hi = Math.max(top, c);
+    up += (up ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(hi).toFixed(1); down = 'L' + X(i).toFixed(1) + ',' + Y(top).toFixed(1) + down;
+    pu += (pu ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(c).toFixed(1); pd = 'L' + X(i).toFixed(1) + ',' + Y(d.load).toFixed(1) + pd;
+    const gap = Y(top) - Y(d.load); if (i > 6 && i < lim - 6 && (!best || gap > best.gap)) best = { i, gap, mid: (Y(top) + Y(d.load)) / 2 };
+  }
+  if (up) el('path', { d: up + down + 'Z', fill: C['c-import'] }, svg);
+  if (pu) el('path', { d: pu + pd + 'Z', fill: C['c-pumpband'] }, svg);
+  if (best && best.gap > 34) stxt(svg, { x: Math.min(Math.max(X(best.i), P.x + 50), xz - 50), y: best.mid + 7, 'text-anchor': 'middle', 'font-size': 20, 'font-weight': 600, fill: C.ink }, 'Import');
+  let dl = ''; for (let i = 0; i <= loadIdx; i++) { const d = data[i]; if (d.load === null) continue; dl += (dl ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(d.load).toFixed(1); }
+  if (dl) el('path', { d: dl, fill: 'none', stroke: C['c-load'], 'stroke-width': 3.2, 'stroke-linejoin': 'round' }, svg);
+  // Prognose: grau = Rest (Kraftwerke, Speicher, Import), darauf helles Wind und Sonne, gestrichelt der erwartete Verbrauch
+  const layer = (lo, hi) => { let a = '', b = ''; for (let i = 0; i < n; i++) { const f = fc[i]; if (!f) continue; a += (a ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(hi(f)).toFixed(1); b = 'L' + X(i).toFixed(1) + ',' + Y(lo(f)).toFixed(1) + b; } return a ? a + b + 'Z' : ''; };
+  const rest = f => f.load === null ? 0 : Math.max(0, f.load - f.wind - f.sun);
+  const pr = layer(() => 0, rest), pw = layer(rest, f => rest(f) + f.wind), ps = layer(f => rest(f) + f.wind, f => rest(f) + f.wind + f.sun);
+  if (pr) el('path', { d: pr, fill: C['c-rest'] }, svg);
+  if (pw) el('path', { d: pw, fill: C['c-wind'], opacity: .72 }, svg);
+  if (ps) el('path', { d: ps, fill: C['c-sonne'], opacity: .78 }, svg);
+  let dfl = ''; for (let i = 0; i < n; i++) { const f = fc[i]; if (!f || f.load === null) continue; dfl += (dfl ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(f.load).toFixed(1); }
+  if (dfl) el('path', { d: dfl, fill: 'none', stroke: C['c-load'], 'stroke-width': 2.6, 'stroke-dasharray': '9 6', 'stroke-linejoin': 'round' }, svg);
+  // Beschriftung im Prognosebereich an einer ruhigen Stelle
+  const fIdx = []; for (let i = 0; i < n; i++) if (fc[i]) fIdx.push(i);
+  if (fIdx.length > 8) {
+    const zx0 = X(fIdx[0]), zx1 = X(fIdx[fIdx.length - 1]), cx = (zx0 + zx1) / 2, mi = fIdx[Math.floor(fIdx.length / 2)], f = fc[mi];
+    const yRest = (Y(0) + Y(rest(f))) / 2, yWS = (Y(rest(f)) + Y(rest(f) + f.wind + f.sun)) / 2;
+    const lab = (y, lines, size) => lines.forEach((t, k) => stxt(svg, { x: cx, y: y + (k - (lines.length - 1) / 2) * (size + 4) + size * .35, 'text-anchor': 'middle', 'font-size': size, 'font-weight': k === 0 ? 600 : 400, fill: C.ink }, t));
+    if (Y(0) - Y(rest(f)) > 74) lab(yRest, ['Rest', 'Kraftwerke,', 'Speicher, Import'], 16);
+    if (Y(rest(f)) - Y(rest(f) + f.wind + f.sun) > 44) lab(yWS, ['Wind + Sonne'], 16);
+    const mid = fIdx.slice(Math.floor(fIdx.length / 4), Math.ceil(fIdx.length * 3 / 4)).filter(i => fc[i].load !== null);
+    if (mid.length) { const yl = Math.min(...mid.map(i => Y(fc[i].load))) - 14; stxt(svg, { x: cx, y: Math.max(P.y + 54, yl), 'text-anchor': 'middle', 'font-size': 16, 'font-weight': 600, fill: C.ink }, 'erwarteter Verbrauch'); }
+  }
+  // Zeitachse
+  el('line', { x1: P.x, x2: P.x + P.w, y1: P.y + P.h, y2: P.y + P.h, stroke: C.axis, 'stroke-width': 1.5 }, svg);
+  for (const t of hourTicks(start, end, 3)) { const x = X((t.t - start) / SLOT); if (x > P.x + P.w - 26 || x < P.x + 20) continue; el('line', { x1: x, x2: x, y1: P.y + P.h, y2: P.y + P.h + (t.major ? 9 : 6), stroke: C.axis, 'stroke-width': 1.5 }, svg); stxt(svg, { x, y: P.y + P.h + 29, 'text-anchor': 'middle', 'font-size': 16, fill: t.major ? C['ink-2'] : C['ink-3'], 'font-weight': t.major ? 600 : 400, class: 'm' }, t.label); }
+  // Jetzt
+  const ns = nowSlot(); if (ns >= start && ns < end) { const x = X((ns - start) / SLOT); el('line', { x1: x, x2: x, y1: P.y, y2: P.y + P.h, stroke: C['ink-2'], 'stroke-width': 1.5 }, svg); nowPill(svg, x, P.y + 8, 'jetzt ' + fmtTime.format(Date.now()), P.x + P.w); }
+  renderReadout(genEnd !== null ? derive(Math.min(genEnd, loadEnd ?? genEnd)) : null, genEnd);
+}
+function renderReadout(k, genEnd) {
+  const box = $('#mixReadout'); box.replaceChildren();
+  const cols = html('div', 'ro-cols', box);
+  const kt = genEnd !== null ? fmtTime.format(Math.min(genEnd, lastTs('load') ?? genEnd)) : '–';
+  const colA = html('div', 'ro-col', cols), colB = html('div', 'ro-col', cols), colC = html('div', 'ro-col', cols);
+  html('h3', '', colA, `Verbrauch · ${kt} Uhr`); html('h3', '', colB, 'Erzeugung · GW'); html('h3', '', colC, ' ');
+  function row(col, kind, color, label, v, cls) { const r = html('div', 'ro-row' + (cls ? ' ' + cls : ''), col); const i = html('i', kind, r); if (color) i.style.background = color; html('span', '', r, label); html('b', '', r, v === null || v === undefined ? '–' : fmt(v, 1)); }
+  if (k) {
+    row(colA, 'line', C['c-load'], 'Netzlast', gw(k.load));
+    row(colA, '', C['c-pumpband'], 'Pumpspeicher lädt', gw(k.pumpCons || 0));
+    if (k.saldo !== null) row(colA, '', k.saldo >= 0 ? 'rgba(255,255,255,.22)' : 'transparent', k.saldo >= 0 ? 'Import (Lücke)' : 'Export', Math.abs(gw(k.saldo)));
+    const gv = g => gw(g.parts.reduce((a, p) => a + (k.g[p] || 0), 0)), byId = Object.fromEntries(MIX.map(g => [g.id, g]));
+    for (const id of ['sonne', 'wind', 'bio']) row(colB, '', C['c-' + id], byId[id].label, gv(byId[id]));
+    for (const id of ['sonst', 'gas', 'kohle']) row(colC, '', C['c-' + id], byId[id].label, gv(byId[id]));
+    row(colC, '', null, 'Erzeugung gesamt', gw(k.total), 'sum');
+  }
+  const note = html('div', 'ro-note', box);
+  html('b', '', note, 'Rechts der senkrechten Linie: Prognose. '); note.append('Helle Flächen = erwartete Wind- und Sonnenleistung, gestrichelt = erwarteter Verbrauch, grau = Rest, den Kraftwerke, Speicher und Import liefern müssen.');
+}
+
+/* ---------- Ansicht 2: vier Karten ---------- */
+// gemeinsame Zeitachse auf der Bühne (px), damit Preiskurve und Streifen exakt untereinander liegen
+const PX0 = 790, PX1 = 1720;
+const GROUP_LABEL = { load: ['Verbraucher²'], sto: ['Speicher²'], th: ['Kraftwerke¹'], ee: ['Wind und', 'Sonne³'] };
+const PILL = { run: ['good', 'good-bg'], dis: ['good', 'good-bg'], charge: ['info', 'info-bg'], curt: ['warn', 'warn-bg'] };
+function pillSvg(svg, x, y, text, cls, anchor) {
+  const t = text.toUpperCase(), w = t.length * 9.3 + 28, px = anchor === 'end' ? x - w : x, col = PILL[cls] || ['ink-2', 'surface-3'];
+  el('rect', { x: px, y, width: w, height: 24, rx: 12, fill: C[col[1]] }, svg);
+  el('circle', { cx: px + 13, cy: y + 12, r: 3.8, fill: C[col[0]] }, svg);
+  stxt(svg, { x: px + 22, y: y + 17, 'font-size': 13.5, 'font-weight': 700, fill: C[col[0]], 'letter-spacing': '.6' }, t);
+  return w;
+}
+function thresholdText(a, r) {
+  if (a.type === 'th') return 'ab ' + fmt(r.thresholds[0].v, 0) + ' €/MWh';
+  if (a.type === 'ely' || a.type === 'heat') return 'bis ' + fmt(r.thresholds[0].v, 0) + ' €/MWh';
+  if (a.type === 'ee') return a.p.curtail ? 'ab 0 €/MWh' : 'immer';
+  const ch = r.thresholds.find(t => t.side === 'load'), dis = r.thresholds.find(t => t.side === 'gen');
+  return ch && dis ? `≤${fmt(ch.v, 0)} / ≥${fmt(dis.v, 0)} €/MWh` : 'kein Handel';
+}
+function bestWindow(from, to, len) {
+  let best = null; const ps = slotsBetween(from, to).map(t => [t, val('price', t)]);
+  for (let i = 0; i + len <= ps.length; i++) { const w = ps.slice(i, i + len); if (w.some(x => x[1] === null)) continue; const avg = w.reduce((s, x) => s + x[1], 0) / len; if (!best || avg < best.avg) best = { t: w[0][0], avg }; }
+  return best;
+}
+// Zeitbeschriftung 00:00 … 24:00, Ränder bündig, an der Jetzt-Marke ausgespart
+function dayTimeLabels(svg, t0, t1, X0, dx, y, skip) {
+  for (const t of hourTicks(t0, t1, 3)) {
+    const x = X0 + (t.t - t0) / SLOT * dx; if (skip && x > skip[0] && x < skip[1]) continue;
+    const first = t.t <= t0, last = t.t >= t1;
+    stxt(svg, { x, y, 'text-anchor': first ? 'start' : last ? 'end' : 'middle', 'font-size': 14.5, fill: C['ink-3'], class: 'm' }, first ? '00:00' : last ? '24:00' : t.label);
+  }
+}
+
+/* Karte: Strompreis jetzt */
+function renderNowCard() {
+  const box = $('#nowBody'); box.replaceChildren();
+  const ns = nowSlot(), p = val('price', ns), rk = priceRank(p, todayPrices().filter(v => v !== null));
+  html('div', 'nc-slot', box, `${fmtTime.format(ns)}–${fmtTime.format(ns + SLOT)} Uhr`);
+  const big = html('div', 'nc-big', box); html('b', '', big, p === null ? '–' : fmt(p, 1)); html('small', '', big, '€/MWh');
+  const row = html('div', 'nc-row', box); html('span', 'mono nc-ct', row, p === null ? 'noch kein Preis' : `= ${fmt(p / 10, 2)} ct/kWh`);
+  if (rk) html('span', 'pill ' + rk.cls, row, rk.lbl);
+  if (rk) html('div', 'nc-rank', box, rk.text);
+}
+
+/* Karte: Tageswerte */
+function renderStatCard() {
+  const box = $('#statBody'); box.replaceChildren();
+  const t0 = midnight(Date.now()), t1 = addDays(t0, 1), t2 = addDays(t0, 2), ns = nowSlot();
+  const list = (a, b) => slotsBetween(a, b).map(t => val('price', t)).filter(v => v !== null);
+  const avg = a => a.reduce((s, v) => s + v, 0) / a.length;
+  const negH = a => { const k = a.filter(v => v < 0).length; return k ? `${fmt(k / 4, k % 4 === 0 ? 0 : k % 2 === 0 ? 1 : 2)} h negativ` : null; };
+  function item(label, tag, tagCls, value, sub) {
+    const it = html('div', 'sc-item', box), l = html('div', 'sc-l', it); html('span', '', l, label); if (tag) html('em', tagCls, l, tag);
+    const v = html('div', 'sc-v', it); html('b', '', v, value); if (sub) html('span', '', v, sub);
+  }
+  const td = list(t0, t1), tm = list(t1, t2);
+  item('Heute', td.length ? negH(td) : null, 'neg', td.length ? `Ø ${fmt(avg(td), 0)}` : '–', td.length ? `${fmt(Math.min(...td), 0)} bis ${fmt(Math.max(...td), 0)}` : '');
+  if (tm.length) item('Morgen', negH(tm), 'neg', `Ø ${fmt(avg(tm), 0)}`, `${fmt(Math.min(...tm), 0)} bis ${fmt(Math.max(...tm), 0)}`);
+  else item('Morgen', null, null, 'noch offen', 'ab ca. 13 Uhr');
+  const bw = bestWindow(ns, tm.length ? t2 : t1, 12);
+  item('Günstigste 3 h', bw ? (bw.t >= t1 ? 'morgen' : 'heute') : null, 'info', bw ? `${fmtTime.format(bw.t)}–${fmtTime.format(bw.t + 12 * SLOT)}` : '–', bw ? `Ø ${fmt(bw.avg, 0)}` : 'zu wenig Daten');
+}
+
+/* Karte: Börsenpreis heute (Kurve mit Kosten der Kraftwerke) */
+function renderPriceChart(results, slots) {
+  const svg = $('#priceSvg'); svg.replaceChildren();
+  const OFF = 700 + 1 + 22, X0 = PX0 - OFF, X1 = PX1 - OFF, n = slots.length, dx = (X1 - X0) / n, X = i => X0 + i * dx;
+  const ns = nowSlot(), t0 = slots[0], t1 = slots[n - 1] + SLOT;
+  const prices = slots.map(t => val('price', t)), known = prices.filter(v => v !== null);
+  const PY = 36, PH = 146;
+  const thermal = ASSETS.filter(a => a.type === 'th').map(a => ({ a, v: results[a.id].thresholds[0].v }));
+  const pmin = Math.min(0, ...(known.length ? known : [0])), pmax = Math.max(50, ...(known.length ? known : [50]), ...thermal.map(t => Math.min(t.v, 300)));
+  const tk = ticks(pmin, pmax * 1.02, 4), yb = tk.values[0], yt = tk.values[tk.values.length - 1];
+  const Y = v => PY + PH - (v - yb) / (yt - yb) * PH;
+  for (const v of tk.values) { el('line', { x1: X0, x2: X1, y1: Y(v), y2: Y(v), stroke: v === 0 ? C.axis : C.grid, 'stroke-width': v === 0 ? 1.5 : 1 }, svg); stxt(svg, { x: X0 - 10, y: Y(v) + 5, 'text-anchor': 'end', 'font-size': 14.5, fill: C['ink-3'], class: 'm' }, fmt(v, 0)); }
+  // Kosten der Kraftwerke: gestrichelt, Beschriftung rechts ohne Überlappung
+  const tl = thermal.filter(t => t.v >= yb && t.v <= yt).sort((a, b) => b.v - a.v);
+  let lastY = -Infinity;
+  for (const t of tl) {
+    const y = Y(t.v); el('line', { x1: X0, x2: X1, y1: y, y2: y, stroke: C['ink-3'], 'stroke-width': 1.3, 'stroke-dasharray': '5 6' }, svg);
+    const ly = Math.max(y + 5, lastY + 17); lastY = ly;
+    if (Math.abs(ly - 5 - y) > 2) el('path', { d: `M${X1},${y}L${X1 + 6},${y}L${X1 + 12},${ly - 5}`, fill: 'none', stroke: C['ink-3'], 'stroke-width': 1 }, svg);
+    stxt(svg, { x: X1 + 14, y: ly, 'font-size': 15, fill: C['ink-2'] }, `${t.a.short} ${fmt(t.v, 0)}`);
+  }
+  // Preis als Treppe, Fläche hell, negative Preise rot
+  let dPos = '', dNeg = '', pl = '', on = false;
+  prices.forEach((v, i) => {
+    if (v === null) { on = false; return; }
+    const y = Y(v), y0 = Y(0), seg = `M${X(i).toFixed(1)},${y0.toFixed(1)}V${y.toFixed(1)}H${(X(i) + dx).toFixed(1)}V${y0.toFixed(1)}Z`;
+    if (v >= 0) dPos += seg; else dNeg += seg;
+    pl += on ? `V${y.toFixed(1)}H${(X(i) + dx).toFixed(1)}` : `M${X(i).toFixed(1)},${y.toFixed(1)}H${(X(i) + dx).toFixed(1)}`; on = true;
+  });
+  el('path', { d: dPos, fill: C.ink, opacity: .08 }, svg);
+  el('path', { d: dNeg, fill: C.bad, opacity: .55 }, svg);
+  el('path', { d: pl, fill: 'none', stroke: C.ink, 'stroke-width': 2.4, 'stroke-linejoin': 'round' }, svg);
+  // Zeitachse und Jetzt
+  const nx = ns >= t0 && ns < t1 ? X0 + (ns - t0) / SLOT * dx : null;
+  dayTimeLabels(svg, t0, t1, X0, dx, PY + PH + 25, null);
+  if (nx !== null) {
+    el('line', { x1: nx, x2: nx, y1: 4, y2: PY + PH, stroke: C.ink, 'stroke-width': 2 }, svg);
+    const p = val('price', ns);
+    if (p !== null) el('circle', { cx: nx + dx / 2, cy: Y(p), r: 6, fill: C.ink, stroke: C.surface, 'stroke-width': 2.5 }, svg);
+    nowPill(svg, nx, 4, 'jetzt', X1);
+  }
+}
+
+/* Karte: Wer läuft wann? (Streifen je Anlage, in Gruppenblöcken) */
+function renderGantt(results, slots) {
+  const svg = $('#ganttSvg'); svg.replaceChildren();
+  const OFF = 48 + 1 + 22, W = 1778, X0 = PX0 - OFF, X1 = PX1 - OFF, n = slots.length, dx = (X1 - X0) / n, X = i => X0 + i * dx;
+  const ns = nowSlot(), t0 = slots[0], t1 = slots[n - 1] + SLOT;
+  const nx = ns >= t0 && ns < t1 ? X0 + (ns - t0) / SLOT * dx : null;
+  const COL = { grp: 18, name: 164, thr: 560, pill: 703, hrs: W - 18 };
+  const RH = 28, PAD = 5, GAP = 9, HY = 21, TOP = 34;
+  // Kopfzeile mit Spaltennamen und Uhrzeiten
+  const head = (x, text, anchor) => stxt(svg, { x, y: HY, 'text-anchor': anchor || 'start', 'font-size': 13, 'font-weight': 700, fill: C['ink-3'], 'letter-spacing': '.9' }, text.toUpperCase());
+  head(COL.name, 'Anlage'); head(COL.thr, 'Preisgrenze', 'end'); head(COL.pill, 'Zustand', 'end'); head(COL.hrs, 'Stunden', 'end');
+  dayTimeLabels(svg, t0, t1, X0, dx, HY, nx !== null ? [nx - 34, nx + 82] : null);
+  // Gruppenblöcke
+  let y = TOP;
+  for (const g of GROUPS) {
+    const list = ASSETS.filter(a => a.g === g.id), h = list.length * RH + 2 * PAD;
+    el('rect', { x: 0, y, width: W, height: h, rx: 10, fill: C['surface-2'] }, svg);
+    GROUP_LABEL[g.id].forEach((s, k, arr) => stxt(svg, { x: COL.grp, y: y + h / 2 + 5 + (k - (arr.length - 1) / 2) * 18, 'font-size': 13.5, 'font-weight': 700, fill: C['ink-2'], 'letter-spacing': '.7' }, s.toUpperCase()));
+    let ry = y + PAD;
+    for (const a of list) {
+      const r = results[a.id];
+      stxt(svg, { x: COL.name, y: ry + 20, 'font-size': 18, fill: C.ink }, a.id === 'psw' ? 'Pumpspeicherwerk' : a.name);
+      stxt(svg, { x: COL.thr, y: ry + 20, 'text-anchor': 'end', 'font-size': 15, fill: C['ink-2'], class: 'm' }, thresholdText(a, r));
+      pillSvg(svg, COL.pill, ry + 2, r.now.text, r.now.cls, 'end');
+      el('rect', { x: X0, y: ry + 4, width: X1 - X0, height: RH - 8, rx: 4, fill: C.stage }, svg);
+      const state = i => {
+        if (!r.known[i]) return null;
+        if (a.type === 'sto') return r.power[i] < 0 ? ['c', 1] : r.power[i] > 0 ? ['g', 1] : null;
+        if (a.type === 'ee') return r.curt[i] ? ['w', 1] : r.run[i] ? ['g', Math.max(.25, Math.min(1, r.power[i] / a.p.P))] : null;
+        return r.run[i] ? ['g', 1] : null;
+      };
+      let i = 0, runQ = 0;
+      while (i < n) {
+        const s = state(i); if (!s) { i++; continue; }
+        let j = i + 1; while (j < n) { const s2 = state(j); if (!s2 || s2[0] !== s[0] || Math.abs(s2[1] - s[1]) > .08) break; j++; }
+        runQ += j - i;
+        el('rect', { x: X(i), y: ry + 4, width: (j - i) * dx, height: RH - 8, fill: s[0] === 'c' ? C.info : s[0] === 'w' ? C.warn : C.good, opacity: s[0] === 'g' ? .35 + .55 * s[1] : .88 }, svg);
+        i = j;
+      }
+      stxt(svg, { x: COL.hrs, y: ry + 20, 'text-anchor': 'end', 'font-size': 18, 'font-weight': 600, fill: C.ink, class: 'm' }, fmt(runQ / 4, 1) + ' h');
+      ry += RH;
+    }
+    // Stundenraster (alle 3 h) innerhalb des Blocks
+    for (const t of hourTicks(t0, t1, 3)) { const x = X0 + (t.t - t0) / SLOT * dx; if (x <= X0 + 1 || x >= X1 - 1) continue; el('line', { x1: x, x2: x, y1: y + PAD, y2: y + h - PAD, stroke: C['surface-2'], 'stroke-width': 2 }, svg); }
+    y += h + GAP;
+  }
+  const rowsBottom = y - GAP;
+  if (nx !== null) {
+    el('line', { x1: nx, x2: nx, y1: 4, y2: rowsBottom, stroke: C.ink, 'stroke-width': 2 }, svg);
+    nowPill(svg, nx, 4, 'jetzt', X1);
+  }
+}
+
+/* ---------- Gesamtaufbau ---------- */
+const state = { view: 0, paused: false, slot: null, timer: null, loading: false, refreshAt: 0, error: null, updated: null, loadedAt: Date.now() };
+function renderAll() {
+  if (!store.updated) return;
+  $('#loading').hidden = true;
+  state.slot = nowSlot();
+  const kTs = kpiTs(), ns = nowSlot();
+  $('#v1Stamp').replaceChildren(); const s1 = $('#v1Stamp');
+  s1.append('Messwerte von '); html('b', '', s1, kTs === null ? '–' : fmtTime.format(kTs) + ' Uhr'); s1.append(document.createElement('br'));
+  s1.append('Börsenpreis für '); html('b', '', s1, `${fmtTime.format(ns)}–${fmtTime.format(ns + SLOT)} Uhr`);
+  const s2 = $('#v2Stamp'); s2.replaceChildren(); s2.append(fmtDayLong.format(Date.now())); s2.append(document.createElement('br')); s2.append('Annahmen in den Fußnoten');
+  renderTiles(); renderMix();
+  const t0 = midnight(Date.now()), slots = slotsBetween(t0, addDays(t0, 1)), results = {};
+  for (const a of ASSETS) results[a.id] = simulate(a, slots);
+  renderNowCard(); renderStatCard(); renderPriceChart(results, slots); renderGantt(results, slots);
+  renderStatus();
+}
+function renderStatus() {
+  const s = $('#status'); s.replaceChildren(); s.classList.toggle('err', !!state.error);
+  if (state.error && store.updated) { s.append('Keine Verbindung zu SMARD'); s.append(document.createElement('br')); s.append('letzte Daten '); html('b', '', s, fmtTime.format(store.updated)); }
+  else if (store.updated) { s.append('aktualisiert '); html('b', '', s, fmtTime.format(store.updated)); s.append(document.createElement('br')); s.append('Quelle SMARD.de'); }
+  else s.append(state.error ? 'SMARD nicht erreichbar, neuer Versuch läuft' : 'Daten werden geladen …');
+  $('#liveDot').classList.toggle('off', !!state.error);
+}
+
+/* ---------- Daten ---------- */
+function neededWeeks() {
+  const now = Date.now(), from = Math.min(windowBounds().start, midnight(now)), to = addDays(midnight(now), 2), set = new Set();
+  for (let t = weekStart(from); t < to; t = addDays(t, 7)) set.add(t);
+  return [...set];
+}
+function prune() {
+  const lim = Date.now() - 3 * DAY;
+  for (const m of Object.values(store.v)) for (const t of [...m.keys()]) if (t < lim) m.delete(t);
+  for (const w of [...store.weeks]) if (w + 8 * DAY < lim) store.weeks.delete(w);
+}
+async function refresh() {
+  if (state.loading) return;
+  state.loading = true;
+  try {
+    if (!store.installed.year) await loadInstalled();
+    const cur = weekStart(Date.now());
+    for (const w of neededWeeks()) if (!store.weeks.has(w) || w >= cur) await loadWeek(w);
+    prune();
+    store.updated = Date.now(); state.error = null;
+  } catch (e) { state.error = e; }
+  state.loading = false;
+  state.refreshAt = Date.now() + (state.error ? 60000 : REFRESH_MS);
+  renderAll(); renderStatus();
+}
+
+/* ---------- Ansichtswechsel ---------- */
+const VIEWS = [$('#v1'), $('#v2')], TABS = [...document.querySelectorAll('.tab')];
+function show(i) {
+  state.view = (i + VIEWS.length) % VIEWS.length;
+  VIEWS.forEach((v, k) => v.classList.toggle('on', k === state.view));
+  TABS.forEach((t, k) => {
+    t.classList.toggle('on', k === state.view);
+    const bar = t.querySelector('.bar'); bar.style.transition = 'none'; bar.style.width = '0';
+    if (k === state.view && !state.paused) { void bar.offsetWidth; bar.style.transition = `width ${ROTATE_MS}ms linear`; bar.style.width = '100%'; }
+  });
+  clearTimeout(state.timer);
+  if (!state.paused) state.timer = setTimeout(() => show(state.view + 1), ROTATE_MS);
+}
+addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); show(state.view + 1); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(state.view - 1); }
+  else if (e.key === ' ') { e.preventDefault(); state.paused = !state.paused; $('#paused').hidden = !state.paused; show(state.view); }
+  else if (e.key === 'r' || e.key === 'R') refresh();
+});
+
+/* ---------- Vollbild, Mauszeiger, Bildschirm wach halten ---------- */
+function isFull() { return !!document.fullscreenElement || (innerHeight >= screen.height - 2 && innerWidth >= screen.width - 2); }
+function updateFsHint() { $('#fsHint').hidden = isFull(); }
+addEventListener('click', () => { if (!document.fullscreenElement && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {}); });
+document.addEventListener('fullscreenchange', () => { updateFsHint(); setTimeout(fit, 50); });
+let idleTimer = null;
+addEventListener('mousemove', () => { document.body.classList.remove('idle'); clearTimeout(idleTimer); idleTimer = setTimeout(() => document.body.classList.add('idle'), 3000); });
+async function keepAwake() { try { if ('wakeLock' in navigator && document.visibilityState === 'visible') await navigator.wakeLock.request('screen'); } catch (e) { /* nicht unterstützt */ } }
+document.addEventListener('visibilitychange', keepAwake);
+
+/* ---------- Takt ---------- */
+setInterval(() => {
+  $('#clock').textContent = fmtTime.format(Date.now());
+  if (!state.loading && state.refreshAt && Date.now() >= state.refreshAt) refresh();
+  if (!state.loading && store.updated && nowSlot() !== state.slot) renderAll();
+  // einmal pro Nacht komplett neu laden (frischer Speicher, neue Dateifassung)
+  const p = tzParts(Date.now());
+  if (p.h === 3 && p.mi === 30 && Date.now() - state.loadedAt > 2 * HOUR) location.reload();
+}, 1000);
+$('#clock').textContent = fmtTime.format(Date.now());
+updateFsHint(); keepAwake();
+show(0);
+refresh();
+</script>
+</body>
+</html>
