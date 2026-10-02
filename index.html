@@ -122,12 +122,12 @@ svg .m { font-family: var(--font-mono); }
 .legend span { display: inline-flex; align-items: center; gap: 9px; }
 .legend i { display: inline-block; width: 24px; height: 14px; border-radius: 3px; }
 .legend i.dash { height: 0; width: 28px; border-radius: 0; border-top: 2px dashed var(--info); }
-#priceCard { left: 48px; right: 48px; top: 140px; height: 250px; }
+#priceCard { left: 48px; right: 48px; top: 140px; height: 240px; }
 #nowBody { position: absolute; left: 22px; top: 46px; width: 540px; bottom: 18px; border-right: 1px solid var(--line-2); }
-#priceSvg { position: absolute; left: 600px; top: 46px; width: 1200px; height: 200px; }
-#ganttCard { left: 48px; right: 48px; top: 406px; height: 534px; }
-#ganttSvg { position: absolute; left: 22px; top: 46px; width: 1778px; height: 486px; }
-.nc-slot { margin-top: 16px; font-size: 17px; color: var(--ink-2); }
+#priceSvg { position: absolute; left: 600px; top: 46px; width: 1200px; height: 194px; }
+#ganttCard { left: 48px; right: 48px; top: 396px; height: 542px; }
+#ganttSvg { position: absolute; left: 22px; top: 46px; width: 1778px; height: 494px; }
+.nc-slot { margin-top: 14px; font-size: 17px; color: var(--ink-2); }
 .nc-line { display: flex; align-items: baseline; gap: 26px; margin-top: 6px; white-space: nowrap; }
 .nc-big { line-height: 1; }
 .nc-big b { font-size: 64px; font-weight: 700; letter-spacing: -.02em; }
@@ -190,23 +190,21 @@ svg .m { font-family: var(--font-mono); }
       <div class="stamp" id="v2Stamp"></div>
     </div>
     <div class="card" id="priceCard">
-      <div class="chead"><span class="eyebrow">Börsenpreis</span><span class="hint">€/MWh je Viertelstunde</span>
-        <div class="legend"><span><i class="dash"></i><span id="elyLegend"></span></span></div></div>
+      <div class="chead"><span class="eyebrow">Börsenpreis heute</span><span class="hint">Strompreis an der Börse für den Tag, € je MWh, je Viertelstunde</span></div>
       <div id="nowBody"></div>
-      <svg id="priceSvg" viewBox="0 0 1200 200" role="img" aria-label="Börsenpreis heute je Viertelstunde"></svg>
+      <svg id="priceSvg" viewBox="0 0 1200 194" role="img" aria-label="Börsenpreis heute je Viertelstunde"></svg>
     </div>
     <div class="card" id="ganttCard">
-      <div class="chead"><span class="eyebrow">Leistung über den Tag</span><span class="hint">heute 0–24 Uhr · Beispielanlagen</span>
+      <div class="chead"><span class="eyebrow">Leistung über den Tag</span><span class="hint">heute 0–24 Uhr · Wind und Sonne: ganz Deutschland · Speicher und Elektrolyseur: Beispielanlagen</span>
         <div class="legend">
           <span><i style="background:var(--good)"></i>speist ein (nach oben)</span>
           <span><i style="background:var(--info)"></i>nimmt Strom auf (nach unten)</span>
-          <span><i style="background:var(--warn)"></i>abgeregelt (Preis unter 0)</span>
         </div></div>
-      <svg id="ganttSvg" viewBox="0 0 1778 486" role="img" aria-label="Leistung der Beispielanlagen heute"></svg>
+      <svg id="ganttSvg" viewBox="0 0 1778 494" role="img" aria-label="Leistung der Beispielanlagen heute"></svg>
     </div>
     <div class="notes">
-      <p><sup>1</sup> Wind und PV: Beispielparks, skaliert aus der deutschen Einspeisung, ab Datenstand Prognose. Fläche = Leistung im Verhältnis zur Nennleistung. Bei negativem Preis abgeregelt. Ohne Netzentgelte und Steuern.</p>
-      <p><sup>2</sup> Speicher (Batterie 88 %, Pumpspeicher 78 %) laden günstig und geben später trotz Verlust teurer ab, Fahrplan nach den Tagespreisen. Elektrolyseur 55 kWh/kg H₂, Erlös 6 €/kg (Annahme). Daten: Bundesnetzagentur | SMARD.de (CC BY 4.0).</p>
+      <p><sup>1</sup> Wind und Sonne: Einspeisung in ganz Deutschland, Fläche = Anteil an der installierten Leistung, ab Datenstand Prognose der Netzbetreiber. Daten: Bundesnetzagentur | SMARD.de (CC BY 4.0).</p>
+      <p><sup>2</sup> Beispielanlagen: Batterie 10 MW / 20 MWh (Wirkungsgrad 88 %), Pumpspeicher 300 MW / 2.400 MWh (78 %), Fahrplan nach den Tagespreisen. Elektrolyseur 10 MW, 55 kWh/kg H₂, Erlös 6 €/kg (Annahme). Preisspannen und Ø: heute.</p>
     </div>
   </section>
   <div class="loading" id="loading">Daten werden geladen …</div>
@@ -769,31 +767,28 @@ function dayTimeLabels(svg, t0, t1, X0, dx, y, skip) {
 function renderNowCard() {
   const box = $('#nowBody'); box.replaceChildren();
   const ns = nowSlot(), p = val('price', ns), rk = priceRank(p, todayPrices().filter(v => v !== null));
-  html('div', 'nc-slot', box, `jetzt · ${fmtTime.format(ns)}–${fmtTime.format(ns + SLOT)} Uhr`);
+  html('div', 'nc-slot', box, `Börsenpreis jetzt · ${fmtTime.format(ns)}–${fmtTime.format(ns + SLOT)} Uhr`);
   const line = html('div', 'nc-line', box);
   const big = html('div', 'nc-big', line); html('b', '', big, p === null ? '–' : fmt(p, 1)); html('small', '', big, '€/MWh');
   html('span', 'mono nc-ct', line, p === null ? 'noch kein Preis' : `= ${fmt(p / 10, 2)} ct/kWh`);
   if (rk) { const row = html('div', 'nc-row', box); html('span', 'pill ' + rk.cls, row, rk.lbl); html('span', 'nc-rank', row, rk.text); }
 }
 
-/* Preiskurve heute (rechter Teil der oberen Karte) mit der Grenze des Elektrolyseurs */
+/* Preiskurve heute (rechter Teil der oberen Karte), direkt beschriftet */
 function renderPriceChart(results, slots) {
   const svg = $('#priceSvg'); svg.replaceChildren();
   const OFF = 48 + 1 + 600, X0 = PX0 - OFF, X1 = PX1 - OFF, n = slots.length, dx = (X1 - X0) / n, X = i => X0 + i * dx;
   const ns = nowSlot(), t0 = slots[0], t1 = slots[n - 1] + SLOT;
   const prices = slots.map(t => val('price', t)), known = prices.filter(v => v !== null);
-  const PY = 34, PH = 132;
-  const ely = results.ely && results.ely.thresholds.length ? results.ely.thresholds[0].v : null;
-  const pmin = Math.min(0, ...(known.length ? known : [0])), pmax = Math.max(50, ...(known.length ? known : [50]), ely !== null ? ely : 0);
-  const tk = ticks(pmin, pmax * 1.04, 4), yb = tk.values[0], yt = tk.values[tk.values.length - 1];
+  const PY = 34, PH = 126;
+  const pmin = Math.min(0, ...(known.length ? known : [0])), pmax = Math.max(50, ...(known.length ? known : [50]));
+  const tk = ticks(pmin, pmax * 1.08, 4), yb = tk.values[0], yt = tk.values[tk.values.length - 1];
   const Y = v => PY + PH - (v - yb) / (yt - yb) * PH;
   for (const v of tk.values) { el('line', { x1: X0, x2: X1, y1: Y(v), y2: Y(v), stroke: v === 0 ? C.axis : C.grid, 'stroke-width': v === 0 ? 1.5 : 1 }, svg); stxt(svg, { x: X0 - 10, y: Y(v) + 5, 'text-anchor': 'end', 'font-size': 14.5, fill: C['ink-3'], class: 'm' }, fmt(v, 0)); }
-  // Grenze Elektrolyseur: darunter läuft er
-  if (ely !== null && ely >= yb && ely <= yt) {
-    el('line', { x1: X0, x2: X1, y1: Y(ely), y2: Y(ely), stroke: C.info, 'stroke-width': 1.5, 'stroke-dasharray': '6 6', opacity: .9 }, svg);
-  }
-  $('#elyLegend').textContent = ely !== null ? `Elektrolyseur läuft bis ${fmt(ely, 0)} €/MWh` : '';
-  // Preis als Treppe, Fläche hell, negative Preise rot
+  stxt(svg, { x: X0 - 10, y: PY - 14, 'text-anchor': 'end', 'font-size': 14.5, fill: C['ink-3'], class: 'm' }, '€/MWh');
+  // Fläche unter der Kurve (oben kräftiger), negative Preise rot
+  const defs = el('defs', {}, svg), gr = el('linearGradient', { id: 'pg', x1: 0, x2: 0, y1: 0, y2: 1 }, defs);
+  el('stop', { offset: '0', 'stop-color': C.ink, 'stop-opacity': .22 }, gr); el('stop', { offset: '1', 'stop-color': C.ink, 'stop-opacity': .03 }, gr);
   let dPos = '', dNeg = '', pl = '', on = false;
   prices.forEach((v, i) => {
     if (v === null) { on = false; return; }
@@ -801,10 +796,20 @@ function renderPriceChart(results, slots) {
     if (v >= 0) dPos += seg; else dNeg += seg;
     pl += on ? `V${y.toFixed(1)}H${(X(i) + dx).toFixed(1)}` : `M${X(i).toFixed(1)},${y.toFixed(1)}H${(X(i) + dx).toFixed(1)}`; on = true;
   });
-  el('path', { d: dPos, fill: C.ink, opacity: .08 }, svg);
+  el('path', { d: dPos, fill: 'url(#pg)' }, svg);
   el('path', { d: dNeg, fill: C.bad, opacity: .55 }, svg);
-  el('path', { d: pl, fill: 'none', stroke: C.ink, 'stroke-width': 2.4, 'stroke-linejoin': 'round' }, svg);
+  el('path', { d: pl, fill: 'none', stroke: C.ink, 'stroke-width': 3, 'stroke-linejoin': 'round' }, svg);
   const nx = ns >= t0 && ns < t1 ? X0 + (ns - t0) / SLOT * dx : null;
+  // direkte Beschriftung „Börsenpreis“ über der Kurve, an einer freien Stelle (nicht an der Jetzt-Marke)
+  const LW = 112, k = Math.ceil(LW / dx);
+  for (let i = 2; i + k < n; i += 2) {
+    const seg = prices.slice(i, i + k); if (seg.some(v => v === null)) continue;
+    const x = X(i), yl = Math.min(...seg.map(Y)) - 10;
+    if (yl - 17 < PY - 4) continue;
+    if (nx !== null && x < nx + 84 && x + LW > nx - 6) continue;
+    stxt(svg, { x, y: yl, 'font-size': 17, 'font-weight': 700, fill: C.ink }, 'Börsenpreis');
+    break;
+  }
   dayTimeLabels(svg, t0, t1, X0, dx, PY + PH + 24, null);
   if (nx !== null) {
     el('line', { x1: nx, x2: nx, y1: 4, y2: PY + PH, stroke: C.ink, 'stroke-width': 2 }, svg);
@@ -814,24 +819,39 @@ function renderPriceChart(results, slots) {
   }
 }
 
-/* Leistung über den Tag: Wind und Sonne als Fläche, Speicher und Elektrolyseur um eine Mittellinie
-   (nach oben = speist ein, grün; nach unten = nimmt Strom auf, blau; gelb = abgeregelt) */
+/* Leistung über den Tag: Wind und Sonne (ganz Deutschland) als Fläche, Speicher und Elektrolyseur um eine Mittellinie
+   (nach oben = speist ein, grün; nach unten = nimmt Strom auf, blau) */
 function renderGantt(results, slots) {
   const svg = $('#ganttSvg'); svg.replaceChildren();
   const OFF = 48 + 1 + 22, W = 1778, X0 = PX0 - OFF, X1 = PX1 - OFF, n = slots.length, dx = (X1 - X0) / n, X = i => X0 + i * dx;
   const ns = nowSlot(), t0 = slots[0], t1 = slots[n - 1] + SLOT;
   const nx = ns >= t0 && ns < t1 ? X0 + (ns - t0) / SLOT * dx : null;
   const COL = { grp: 18, name: 164, pill: X0 - 16 };
-  const RH = 64, PAD = 6, GAP = 10, HY = 21, TOP = 34, TP = 6, TH = RH - 2 * TP;
+  const RH = 66, PAD = 6, GAP = 10, HY = 21, TOP = 34, TP = 6, TH = RH - 2 * TP;
   const head = (x, text, anchor) => stxt(svg, { x, y: HY, 'text-anchor': anchor || 'start', 'font-size': 13, 'font-weight': 700, fill: C['ink-3'], 'letter-spacing': '.9' }, text.toUpperCase());
   head(COL.name, 'Anlage'); head(COL.pill, 'Jetzt', 'end');
   dayTimeLabels(svg, t0, t1, X0, dx, HY, nx !== null ? [nx - 34, nx + 104] : null);
   const byId = Object.fromEntries(ASSETS.map(a => [a.id, a]));
+  // Wind und Sonne: Einspeisung in ganz Deutschland (Messwert, danach Prognose) als Anteil der installierten Leistung
+  const EE_NAME = { pvp: 'Photovoltaik', wonp: 'Wind an Land', woffp: 'Wind auf See' };
+  const EE_FC = { pv: 'fcPV', won: 'fcWon', woff: 'fcWoff' };
+  const eeShare = a => slots.map(t => { const v = mw(a.src, t) ?? mw(EE_FC[a.src], t), inst = store.installed[a.src]; return v === null || !inst ? null : Math.max(0, v / inst); });
+  const range = list => list.length ? `${fmt(Math.min(...list), 0)} bis ${fmt(Math.max(...list), 0)} €/MWh, Ø ${fmt(list.reduce((s, v) => s + v, 0) / list.length, 0)}` : null;
   const sub = (a, r) => {
-    if (a.type === 'ee') return `Nennleistung ${fmt(a.p.P, 0)} MW`;
-    if (a.type === 'sto') return `${fmt(a.p.P, 0)} MW, speichert ${fmt(a.p.E, 0)} MWh`;
-    if (a.type === 'ely') return `${fmt(a.p.P, 0)} MW, läuft bis ${fmt(r.thresholds[0].v, 0)} €/MWh`;
-    return '';
+    if (a.type === 'ee') {
+      const lt = lastTs(a.src), v = lt !== null ? mw(a.src, lt) : null, inst = store.installed[a.src];
+      return [v === null ? 'noch keine Messwerte' : `${fmt(v / 1000, 1)} GW von ${fmt(inst / 1000, 0)} GW installiert`, null];
+    }
+    const pr = i => val('price', slots[i]);
+    if (a.type === 'sto') {
+      const ch = [], dis = []; r.power.forEach((p, i) => { const q = pr(i); if (q === null || !p) return; (p < 0 ? ch : dis).push(q); });
+      return [range(ch) ? `lädt bei ${range(ch)}` : 'lädt heute nicht', range(dis) ? `speist ein bei ${range(dis)}` : 'speist heute nicht ein'];
+    }
+    if (a.type === 'ely') {
+      const run = []; r.run.forEach((on, i) => { const q = pr(i); if (on && q !== null) run.push(q); });
+      return [`läuft bis ${fmt(r.thresholds[0].v, 0)} €/MWh`, range(run) ? `heute bei ${range(run)}` : 'heute nicht, Preis immer darüber'];
+    }
+    return ['', ''];
   };
   // Rechteck über zusammenhängende Viertelstunden mit gleichem Wert
   function bars(get, color, top, scale) {
@@ -870,22 +890,28 @@ function renderGantt(results, slots) {
   for (const g of V2_GROUPS) {
     const list = g.assets.map(id => byId[id]).filter(Boolean), h = list.length * RH + 2 * PAD;
     el('rect', { x: 0, y, width: W, height: h, rx: 10, fill: C['surface-2'] }, svg);
-    g.label.forEach((s, k, arr) => stxt(svg, { x: COL.grp, y: y + h / 2 + 5 + (k - (arr.length - 1) / 2) * 18, 'font-size': 13.5, 'font-weight': 700, fill: C['ink-2'], 'letter-spacing': '.7' }, s.toUpperCase()));
+    // bei Wind und Sonne zusätzlich der Zeitpunkt des letzten Messwerts
+    const lt = g.id === 'ee' ? lastTs('pv') : null, extra = lt !== null ? 1 : 0;
+    g.label.forEach((s, k, arr) => stxt(svg, { x: COL.grp, y: y + h / 2 + 5 + (k - (arr.length + extra - 1) / 2) * 18, 'font-size': 13.5, 'font-weight': 700, fill: C['ink-2'], 'letter-spacing': '.7' }, s.toUpperCase()));
+    if (extra) stxt(svg, { x: COL.grp, y: y + h / 2 + 5 + (g.label.length - (g.label.length + extra - 1) / 2) * 18 + 4, 'font-size': 14, fill: C['ink-3'] }, `Stand ${fmtTime.format(lt)} Uhr`);
     let ry = y + PAD;
     for (const a of list) {
       const r = results[a.id];
-      stxt(svg, { x: COL.name, y: ry + 28, 'font-size': 19, fill: C.ink }, a.id === 'psw' ? 'Pumpspeicherwerk' : a.name);
-      stxt(svg, { x: COL.name, y: ry + 49, 'font-size': 14.5, fill: C['ink-3'] }, sub(a, r));
-      const cls = a.type === 'ely' && r.now.cls === 'run' ? 'charge' : r.now.cls;
-      pillSvg(svg, COL.pill, ry + (RH - 24) / 2, r.now.text, cls, 'end');
+      const sl = sub(a, r), two = sl[1] !== null;
+      stxt(svg, { x: COL.name, y: ry + (two ? 22 : 28), 'font-size': 19, fill: C.ink }, EE_NAME[a.id] || (a.id === 'psw' ? 'Pumpspeicherwerk' : a.name));
+      stxt(svg, { x: COL.name, y: ry + (two ? 41 : 49), 'font-size': 15, fill: C['ink-2'] }, sl[0]);
+      if (two) stxt(svg, { x: COL.name, y: ry + 59, 'font-size': 15, fill: C['ink-2'] }, sl[1]);
+      let pill = [r.now.text, r.now.cls];
+      if (a.type === 'ely' && r.now.cls === 'run') pill = ['läuft', 'charge'];
+      if (a.type === 'ee') { const lt = lastTs(a.src), v = lt !== null ? mw(a.src, lt) : null; pill = v === null ? ['keine Daten', 'na'] : v / store.installed[a.src] > 0.005 ? ['speist ein', 'run'] : ['steht', 'idle']; }
+      pillSvg(svg, COL.pill, ry + (RH - 24) / 2, pill[0], pill[1], 'end');
       const ty = ry + TP, yb = ty + TH, ym = ty + TH / 2;
       el('rect', { x: X0, y: ty, width: X1 - X0, height: TH, rx: 5, fill: C.stage }, svg);
       for (const t of hourTicks(t0, t1, 3)) { const x = X0 + (t.t - t0) / SLOT * dx; if (x <= X0 + 1 || x >= X1 - 1) continue; el('line', { x1: x, x2: x, y1: ty, y2: yb, stroke: C.grid, 'stroke-width': 1.5 }, svg); }
       if (a.type === 'ee') {
-        // abgeregelt: mögliche Leistung gelb, sonst Einspeisung grün; Höhe = Anteil an der Nennleistung
-        const scale = TH - 4;
-        area(i => r.known[i] && r.curt[i] && r.pot ? Math.min(1, r.pot[i] / a.p.P) : null, C.warn, yb, scale);
-        area(i => r.known[i] && !r.curt[i] ? Math.min(1, (r.power[i] || 0) / a.p.P) : null, C.good, yb, scale);
+        // Einspeisung grün, Höhe = Anteil an der installierten Leistung in Deutschland
+        const sh = eeShare(a);
+        area(i => sh[i] === null ? null : Math.min(1, sh[i]), C.good, yb, TH - 4);
       } else {
         // um die Mittellinie: Einspeisen nach oben, Strom aufnehmen nach unten
         const half = TH / 2 - 3;
