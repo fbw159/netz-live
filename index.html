@@ -114,6 +114,7 @@ svg .m { font-family: var(--font-mono); }
 
 /* Ansicht 2: zwei Karten – oben Börsenpreis (links Preis jetzt, rechts Tageskurve), unten Leistung der Anlagen.
    Zeitachse von Preiskurve und Anlagen liegt auf der Bühne bei x = 700 … 1840 (siehe PX0/PX1 im Skript). */
+#v2 .vhead { align-items: center; }
 #v2 .card { border-color: rgba(255,255,255,.14); box-shadow: 0 10px 28px rgba(0,0,0,.35); overflow: hidden; }
 .chead { position: absolute; left: 0; right: 0; top: 0; height: 46px; padding: 0 22px; display: flex; align-items: center; gap: 14px; background: var(--surface-2); border-bottom: 1px solid rgba(255,255,255,.1); white-space: nowrap; }
 .eyebrow { font-size: 15px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--ink); }
@@ -185,7 +186,6 @@ svg .m { font-family: var(--font-mono); }
     <div class="vhead">
       <div>
         <h1>Wind, Sonne und Speicher heute</h1>
-        <p>Wind und Sonne liefern, was das Wetter hergibt. Speicher laden, wenn Strom günstig ist, und speisen ein, wenn er teuer ist.</p>
       </div>
       <div class="stamp" id="v2Stamp"></div>
     </div>
