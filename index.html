@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Netz-Live</title>
-<meta name="description" content="Netz-Live als Flur-Anzeige: Stromverbrauch, Erneuerbaren-Anteil, Speicher und Strommix Deutschland, dazu die Rechnung, was Strom an der Börse in den letzten 12 Monaten ohne Erneuerbare gekostet hätte. Wechselt alle 30 Sekunden.">
+<meta name="description" content="Netz-Live als Flur-Anzeige: Stromverbrauch, Erneuerbaren-Anteil, Speicher und Strommix Deutschland, dazu Wind, Sonne und Speicher über den Tag. Wechselt alle 30 Sekunden.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
@@ -119,30 +119,33 @@ svg .m { font-family: var(--font-mono); }
 .lg-note { margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 15.5px; color: var(--ink-3); line-height: 1.38; }
 .lg-note b { color: var(--ink-2); font-weight: 600; }
 
-/* Ansicht 2: Was hätte Strom ohne Erneuerbare gekostet? Eine Ergebniskachel, darunter drei Posten, unten Annahmen. */
-#hero { left: 48px; right: 48px; top: 140px; height: 300px; padding: 26px 40px 24px; display: flex; flex-direction: column; justify-content: space-between; }
-#hero .label { font-size: 28px; color: var(--ink-2); white-space: nowrap; }
-#hero .value .pill.cheap { background: var(--good-bg); color: var(--good); }
-#hero .value { font-size: 150px; font-weight: 600; line-height: 1; letter-spacing: -.035em; white-space: nowrap; display: flex; align-items: baseline; gap: 26px; }
-#hero .value small { font-size: 44px; font-weight: 500; color: var(--ink-2); letter-spacing: 0; }
-#hero .value .pill { font-size: 26px; padding: 10px 22px; align-self: center; margin-left: 10px; }
-#hero .sub { font-size: 26px; color: var(--ink-2); line-height: 1.35; }
-#hero .sub b { color: var(--ink); font-weight: 600; font-family: var(--font-mono); }
-.ktiles { position: absolute; left: 48px; right: 48px; top: 456px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-.ktile { height: 330px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px 28px 20px; display: flex; flex-direction: column; min-width: 0; }
-.ktile .label { font-size: 24px; color: var(--ink-2); line-height: 1.3; }
-.ktile .value { font-size: 80px; font-weight: 600; line-height: 1.05; letter-spacing: -.025em; white-space: nowrap; margin: auto 0; }
-.ktile .value small { font-size: 30px; font-weight: 500; color: var(--ink-2); margin-left: 10px; letter-spacing: 0; }
-.ktile .value.up { color: var(--warn); }
-.ktile .value.down { color: var(--info); }
-.ktile .value.ee { color: var(--good); }
-.ktile .sub { font-size: 21px; color: var(--ink-2); line-height: 1.35; }
-.ktile .sub b { color: var(--ink); font-weight: 600; font-family: var(--font-mono); }
-.cf-wait { position: absolute; left: 0; right: 0; top: 46%; text-align: center; font-size: 26px; color: var(--ink-2); }
-.cf-wait small { display: block; margin-top: 10px; font-size: 18px; color: var(--ink-3); }
-.notes { position: absolute; left: 48px; right: 48px; bottom: 16px; font-size: 15px; color: var(--ink-3); line-height: 1.42; }
+/* Ansicht 2: zwei Karten – oben Börsenpreis (links Preis jetzt, rechts Tageskurve), unten Leistung der Anlagen.
+   Zeitachse von Preiskurve und Anlagen liegt auf der Bühne bei x = 700 … 1840 (siehe PX0/PX1 im Skript). */
+#v2 .vhead { align-items: center; }
+#v2 .card { border-color: rgba(255,255,255,.14); box-shadow: 0 10px 28px rgba(0,0,0,.35); overflow: hidden; }
+.chead { position: absolute; left: 0; right: 0; top: 0; height: 46px; padding: 0 22px; display: flex; align-items: center; gap: 14px; background: var(--surface-2); border-bottom: 1px solid rgba(255,255,255,.1); white-space: nowrap; }
+.eyebrow { font-size: 15px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--ink); }
+.chead .hint { font-size: 16px; color: var(--ink-3); }
+.legend { margin-left: auto; display: flex; align-items: center; gap: 26px; font-size: 16px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 9px; }
+.legend i { display: inline-block; width: 24px; height: 14px; border-radius: 3px; }
+.legend i.dash { height: 0; width: 28px; border-radius: 0; border-top: 2px dashed var(--info); }
+#priceCard { left: 48px; right: 48px; top: 140px; height: 240px; }
+#nowBody { position: absolute; left: 22px; top: 46px; width: 540px; bottom: 18px; border-right: 1px solid var(--line-2); }
+#priceSvg { position: absolute; left: 600px; top: 46px; width: 1200px; height: 194px; }
+#ganttCard { left: 48px; right: 48px; top: 396px; height: 542px; }
+#ganttSvg { position: absolute; left: 22px; top: 46px; width: 1778px; height: 494px; }
+.nc-slot { margin-top: 14px; font-size: 17px; color: var(--ink-2); }
+.nc-line { display: flex; align-items: baseline; gap: 26px; margin-top: 6px; white-space: nowrap; }
+.nc-big { line-height: 1; }
+.nc-big b { font-size: 64px; font-weight: 700; letter-spacing: -.02em; }
+.nc-big small { font-size: 21px; color: var(--ink-2); margin-left: 8px; }
+.nc-ct { font-size: 20px; }
+.nc-row { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
+.nc-rank { font-size: 16px; color: var(--ink-2); }
+.notes { position: absolute; left: 48px; right: 48px; bottom: 12px; font-size: 13.5px; color: var(--ink-3); line-height: 1.42; }
 .notes p { margin: 0; }
-.notes b { color: var(--ink-2); font-weight: 600; }
+.notes sup, .card sup, svg .sup { color: var(--ink-2); }
 .loading { position: absolute; left: 0; right: 0; top: 45%; text-align: center; font-size: 28px; color: var(--ink-2); }
 </style>
 </head>
@@ -153,7 +156,7 @@ svg .m { font-family: var(--font-mono); }
     <div class="topmid">
       <div class="tabs">
         <div class="tab on"><b>1</b>Übersicht<span class="bar"></span></div>
-        <div class="tab"><b>2</b>Erneuerbare und Strompreis<span class="bar"></span></div>
+        <div class="tab"><b>2</b>Wind, Sonne, Speicher<span class="bar"></span></div>
       </div>
       <span class="paused" id="paused" hidden>pausiert</span>
       <div class="clockbox">
@@ -184,25 +187,31 @@ svg .m { font-family: var(--font-mono); }
     </div>
   </section>
 
-  <!-- Ansicht 2: Was hätte Strom ohne Erneuerbare gekostet? -->
-  <section class="view" id="v2" aria-label="Börsenstrompreis mit und ohne Erneuerbare, letzte 12 Monate">
+  <!-- Ansicht 2 -->
+  <section class="view" id="v2" aria-label="Wind, Sonne und Speicher heute">
     <div class="vhead">
       <div>
-        <h1>Was Erneuerbare am Strompreis bewirken</h1>
-        <p id="v2Sub">Börsenpreis der letzten 12 Monate, Stunde für Stunde nachgerechnet: ohne Erneuerbare hätten Gaskraftwerke liefern müssen.</p>
+        <h1>Wind, Sonne und Speicher heute</h1>
       </div>
       <div class="stamp" id="v2Stamp"></div>
     </div>
-    <div id="cfBody" hidden>
-      <div class="card" id="hero">
-        <div class="label" id="heroLabel">Strom an der Börse mit Erneuerbaren</div>
-        <div class="value" id="heroValue"></div>
-        <div class="sub" id="heroSub"></div>
-      </div>
-      <div class="ktiles" id="ktiles"></div>
-      <div class="notes" id="cfNotes"></div>
+    <div class="card" id="priceCard">
+      <div class="chead"><span class="eyebrow">Börsenpreis heute</span><span class="hint">€/MWh je Viertelstunde</span></div>
+      <div id="nowBody"></div>
+      <svg id="priceSvg" viewBox="0 0 1200 194" role="img" aria-label="Börsenpreis heute je Viertelstunde"></svg>
     </div>
-    <div class="cf-wait" id="cfWait">Rechnung läuft, Stundendaten der letzten 12 Monate werden geladen …<small id="cfProgress"></small></div>
+    <div class="card" id="ganttCard">
+      <div class="chead"><span class="eyebrow">Leistung über den Tag</span><span class="hint">heute 0–24 Uhr</span>
+        <div class="legend">
+          <span><i style="background:var(--good)"></i>speist ein (nach oben)</span>
+          <span><i style="background:var(--info)"></i>nimmt Strom auf (nach unten)</span>
+        </div></div>
+      <svg id="ganttSvg" viewBox="0 0 1778 494" role="img" aria-label="Leistung der Beispielanlagen heute"></svg>
+    </div>
+    <div class="notes">
+      <p><sup>1</sup> Wind und Sonne: Einspeisung in ganz Deutschland, Fläche = Anteil an der installierten Leistung, ab Datenstand Prognose der Netzbetreiber. Daten: Bundesnetzagentur | SMARD.de (CC BY 4.0).</p>
+      <p><sup>2</sup> Beispielanlagen: Batterie 10 MW / 20 MWh (Wirkungsgrad 88 %), Pumpspeicher 300 MW / 2.400 MWh (78 %), Fahrplan nach den Tagespreisen. Elektrolyseur 10 MW, 55 kWh/kg H₂, Erlös 6 €/kg (Annahme). Ø = mittlerer Preis beim Laden bzw. Einspeisen heute.</p>
+    </div>
   </section>
   <div class="loading" id="loading">Daten werden geladen …</div>
 </div>
@@ -398,6 +407,24 @@ function simulate(a, slots) {
   return out;
 }
 
+/* ---------- Beispielanlagen für Ansicht 2 (Batterie = BAT wie in Ansicht 1) ---------- */
+const PSW = { id: 'psw', name: 'Pumpspeicherkraftwerk', short: 'Pumpspeicher', type: 'sto', p: { P: 300, E: 2400, eta: 78 } };
+const ELY = { id: 'ely', name: 'Elektrolyseur (PEM)', short: 'Elektrolyseur', type: 'ely', p: { P: 10, spec: 55, h2: 6, fee: 0 } };
+// Wind und Sonne: ganz Deutschland (keine Beispielparks); src = SMARD-Reihe
+const V2_ASSETS = [
+  { id: 'pvp', type: 'ee', src: 'pv' }, { id: 'wonp', type: 'ee', src: 'won' }, { id: 'woffp', type: 'ee', src: 'woff' },
+  BAT, PSW, ELY,
+];
+function elyBreakEven(a) { return a.p.h2 * 1000 / a.p.spec - a.p.fee; }
+/* Elektrolyseur: läuft mit voller Leistung, solange der Börsenpreis unter dem Erlös je MWh Strom liegt */
+function simulateEly(a, slots) {
+  const n = slots.length, be = elyBreakEven(a);
+  const out = { run: new Array(n).fill(false), power: new Array(n).fill(null), known: new Array(n).fill(false), thresholds: [{ v: be, side: 'load', label: a.short }], nowIdx: slots.indexOf(nowSlot()) };
+  slots.forEach((t, i) => { const p = val('price', t); if (p === null) return; out.known[i] = true; out.run[i] = p <= be; out.power[i] = out.run[i] ? a.p.P : 0; });
+  const k = out.nowIdx;
+  out.now = k < 0 || !out.known[k] ? { cls: 'na', text: 'kein Preis' } : out.run[k] ? { cls: 'run', text: 'läuft' } : { cls: 'idle', text: 'steht' };
+  return out;
+}
 
 /* ================= Flur-Anzeige ================= */
 const ROTATE_MS = 30000;            // Wechsel der Ansichten
@@ -430,6 +457,14 @@ function nowPill(svg, x, y, label, right) {
   stxt(svg, { x: rx + w / 2, y: y + 18.5, 'text-anchor': 'middle', 'font-size': 16, fill: C.ink, class: 'm' }, label);
 }
 function kpiTs() { const g = lastTs('pv'), l = lastTs('load'); return g !== null && l !== null ? Math.min(g, l) : null; }
+function priceRank(p, list) {
+  const n = list.length; if (!n || p === null) return null;
+  const higher = list.filter(x => x > p).length, lower = list.filter(x => x < p).length, share = higher / n;
+  const cls = p < 0 ? 'charge' : share >= 2 / 3 ? 'run' : share <= 1 / 3 ? 'curt' : '';
+  const lbl = p < 0 ? 'negativ' : share >= 2 / 3 ? 'günstig' : share <= 1 / 3 ? 'teuer' : 'mittel';
+  const text = lower === 0 ? 'günstigste Viertelstunde des Tages' : higher === 0 ? 'teuerste Viertelstunde des Tages' : `günstiger als ${fmt(share * 100, 0)} % der Viertelstunden heute`;
+  return { cls, lbl, text };
+}
 function todayPrices() { const t0 = midnight(Date.now()); return slotsBetween(t0, addDays(t0, 1)).map(t => val('price', t)); }
 
 /* ---------- Ansicht 1: Kacheln ---------- */
@@ -583,152 +618,197 @@ function renderReadout(k, genEnd) {
   html('b', '', note, 'Rechts der senkrechten Linie: Prognose vom Vortag. '); note.append('Grau = übrige Erzeugung, darauf erwarteter Wind und Sonne, darüber Import bis zum erwarteten Verbrauch (gestrichelt).');
 }
 
-/* ================= Ansicht 2: Was hätte Strom ohne Erneuerbare gekostet? =================
-   Rechnung je Stunde über die letzten 12 vollen Kalendermonate mit SMARD-Stundendaten.
-   1. Angebotskurve des heutigen konventionellen Parks: tatsächlicher Börsenpreis über der konventionellen Erzeugung
-      (Braunkohle + Steinkohle + Erdgas + Sonstige konventionelle), je 1 GW ein Mittelwert, monoton steigend geglättet (PAVA).
-   2. Ohne Erneuerbare muss der konventionelle Park zusätzlich liefern, was Wind, Sonne, Biomasse, Wasserkraft und sonstige
-      Erneuerbare erzeugt haben. Was über die höchste beobachtete konventionelle Erzeugung hinausgeht, liefern neue
-      GuD-Kraftwerke zu ihren Grenzkosten; in der Angebotskurve schieben sie sich vor die teureren Altanlagen.
-   3. Preis ohne Erneuerbare je Stunde = Angebotskurve mit GuD-Block, abgelesen bei „konventionell + erneuerbar“.
-   4. Endkunde: Börsenpreis-Differenz (verbrauchsgewichtet) plus Fixkosten der neuen GuD-Kraftwerke (der Preis deckt nur
-      ihre Grenzkosten) minus wegfallende EEG-Förderung, Offshore-Netzumlage, Netzengpassmanagement und EE-bedingter
-      Netzausbau. Rechnungsposten mit MwSt, Förderung aus dem Bundeshaushalt ohne.
-   Import/Export, Pumpspeicher, Brennstoff- und CO₂-Preise bleiben wie real. Bei so viel Mehrbedarf würden Gas und CO₂
-   eher teurer, der Preis ohne Erneuerbare ist also eine Untergrenze. */
-const CF = {
-  eeg: 16.2e9,            // €/a  EEG-Förderung netto: 2025 Ist 18,5 Mrd. € Auszahlungen minus 2,25 Mrd. € Vermarktungserlöse (EEG-Konto), Prognose 2026 16,15 Mrd. € (ÜNB, Okt. 2025)
-  congestion: 3.07e9,     // €/a  Netzengpassmanagement 2025: Redispatch 1,18, EE-Entschädigung 0,43, Netzreserve 1,36, Countertrading 0,10 Mrd. € (BNetzA, März 2026)
-  offshore: 0.941,        // ct/kWh Offshore-Netzumlage 2026 (ÜNB, Okt. 2025)
-  gridExp: [1.0, 3.0],    // ct/kWh netto, Spanne für den EE-bedingten Netzausbau in den Netzentgelten (Schätzung, gerechnet wird die Mitte; Netzentgelte für Haushalte stiegen 2015→2025 von rund 6 auf 11 ct/kWh, vzbv)
-  vat: 0.19,
-  household: 3500,        // kWh/a
-  householdPrice: 39.6,   // ct/kWh Strompreis für Haushalte mit 3.500 kWh/a, BDEW-Strompreisanalyse Oktober 2025 (Beschaffung & Vertrieb 16,0 · Netz 10,9 · Steuern, Abgaben, Umlagen 12,7)
-  gud: { fuel: 'gas', ef: 0.202, p: { eta: 58, vom: 3 } },  // neue GuD-Kraftwerke
-  gudFixed: 100,          // €/kW/a Fixkosten der neuen GuD-Kraftwerke: Investition 1.000 €/kW, 6 % Zins, 25 Jahre (Annuität 78 €/kW/a) plus 22 €/kW/a feste Betriebskosten
-  binMW: 1000, minBin: 24, // Angebotskurve: Breite der Stufen, Mindestzahl Stunden je Stufe
-};
-const CF_IDS = { conv: ['lig', 'coal', 'gas', 'oth'], ee: ['hydro', 'bio', 'othRen', 'woff', 'won', 'pv'] };
-const CF_SERIES = [...GEN.filter(s => s.id !== 'pump'), ...EXTRA.filter(s => ['othRen', 'load', 'price'].includes(s.id))];
-const cf = { v: {}, started: false, done: 0, total: 0, failed: 0, result: null, error: null, at: 0 };
-function monthStart(ms) { const p = tzParts(ms); return midnight(Date.UTC(p.y, p.m - 1, 1, 12)); }
-function addMonths(ms, n) { const p = tzParts(ms + 12 * HOUR), k = p.m - 1 + n; return midnight(Date.UTC(p.y + Math.floor(k / 12), ((k % 12) + 12) % 12, 1, 12)); }
-function cfWindow() { const end = monthStart(Date.now()); return { start: addMonths(end, -12), end }; }
-const fmtMonth = new Intl.DateTimeFormat('de-DE', { timeZone: TZ, month: 'long', year: 'numeric' });
-const fmtMonthS = new Intl.DateTimeFormat('de-DE', { timeZone: TZ, month: 'short' });
-const fmtYear = new Intl.DateTimeFormat('de-DE', { timeZone: TZ, year: 'numeric' });
+/* ---------- Ansicht 2: Wind, Sonne, Speicher (und Elektrolyseur) ---------- */
+// gemeinsame Zeitachse auf der Bühne (px), damit Preiskurve und Anlagenzeilen exakt untereinander liegen
+const PX0 = 700, PX1 = 1840;
+const V2_GROUPS = [
+  { id: 'ee', label: ['Wind und', 'Sonne¹'], note: ['ganz Deutschland'], assets: ['pvp', 'wonp', 'woffp'] },
+  { id: 'sto', label: ['Speicher²'], note: ['Beispielanlagen'], assets: ['bat', 'psw'] },
+  { id: 'load', label: ['Verbraucher²'], note: ['Beispielanlage'], assets: ['ely'] },
+];
+const PILL = { run: ['good', 'good-bg'], dis: ['good', 'good-bg'], charge: ['info', 'info-bg'], curt: ['warn', 'warn-bg'] };
+function pillSvg(svg, x, y, text, cls, anchor) {
+  const t = text.toUpperCase(), w = t.length * 10.2 + 28, px = anchor === 'end' ? x - w : x, col = PILL[cls] || ['ink-2', 'surface-3'];
+  el('rect', { x: px, y, width: w, height: 24, rx: 12, fill: C[col[1]] }, svg);
+  el('circle', { cx: px + 13, cy: y + 12, r: 3.8, fill: C[col[0]] }, svg);
+  stxt(svg, { x: px + 22, y: y + 17, 'font-size': 13.5, 'font-weight': 700, fill: C[col[0]], 'letter-spacing': '.6' }, t);
+  return w;
+}
+// Zeitbeschriftung 00:00 … 24:00, Ränder bündig, an der Jetzt-Marke ausgespart
+function dayTimeLabels(svg, t0, t1, X0, dx, y, skip) {
+  for (const t of hourTicks(t0, t1, 3)) {
+    const x = X0 + (t.t - t0) / SLOT * dx; if (skip && x > skip[0] && x < skip[1]) continue;
+    const first = t.t <= t0, last = t.t >= t1;
+    stxt(svg, { x, y, 'text-anchor': first ? 'start' : last ? 'end' : 'middle', 'font-size': 14.5, fill: C['ink-3'], class: 'm' }, first ? '00:00' : last ? '24:00' : t.label);
+  }
+}
 
-async function cfLoad() {
-  if (cf.started) return; cf.started = true;
-  const { start, end } = cfWindow();
-  const weeks = []; for (let t = weekStart(start); t < end; t = addDays(t, 7)) weeks.push(t);
-  const jobs = []; for (const w of weeks) for (const s of CF_SERIES) jobs.push({ s, url: `${SMARD}/${s.f}/${s.region || 'DE'}/${s.f}_${s.region || 'DE'}_hour_${w}.json` });
-  cf.total = jobs.length; cf.done = 0; cf.failed = 0; cf.v = {};
-  await pool(jobs, 6, async j => {
-    try {
-      const d = await fetchJSON(j.url);
-      if (d && d.series) { const m = cf.v[j.s.id] || (cf.v[j.s.id] = new Map()); for (const [t, v] of d.series) if (v !== null) m.set(t, v); }
-    } catch (e) { cf.failed++; throw e; }
-    finally { cf.done++; if (cf.done % 12 === 0 || cf.done === cf.total) renderCfProgress(); }
+/* Preis jetzt (linker Teil der oberen Karte) */
+function renderNowCard() {
+  const box = $('#nowBody'); box.replaceChildren();
+  const ns = nowSlot(), p = val('price', ns), rk = priceRank(p, todayPrices().filter(v => v !== null));
+  html('div', 'nc-slot', box, `Börsenpreis jetzt · ${fmtTime.format(ns)}–${fmtTime.format(ns + SLOT)} Uhr`);
+  const line = html('div', 'nc-line', box);
+  const big = html('div', 'nc-big', line); html('b', '', big, p === null ? '–' : fmt(p, 1)); html('small', '', big, '€/MWh');
+  html('span', 'mono nc-ct', line, p === null ? 'noch kein Preis' : `= ${fmt(p / 10, 2)} ct/kWh`);
+  if (rk) { const row = html('div', 'nc-row', box); html('span', 'pill ' + rk.cls, row, rk.lbl); html('span', 'nc-rank', row, rk.text); }
+}
+
+/* Preiskurve heute (rechter Teil der oberen Karte), direkt beschriftet */
+function renderPriceChart(results, slots) {
+  const svg = $('#priceSvg'); svg.replaceChildren();
+  const OFF = 48 + 1 + 600, X0 = PX0 - OFF, X1 = PX1 - OFF, n = slots.length, dx = (X1 - X0) / n, X = i => X0 + i * dx;
+  const ns = nowSlot(), t0 = slots[0], t1 = slots[n - 1] + SLOT;
+  const prices = slots.map(t => val('price', t)), known = prices.filter(v => v !== null);
+  const PY = 34, PH = 126;
+  const pmin = Math.min(0, ...(known.length ? known : [0])), pmax = Math.max(50, ...(known.length ? known : [50]));
+  const tk = ticks(pmin, pmax * 1.08, 4), yb = tk.values[0], yt = tk.values[tk.values.length - 1];
+  const Y = v => PY + PH - (v - yb) / (yt - yb) * PH;
+  for (const v of tk.values) { el('line', { x1: X0, x2: X1, y1: Y(v), y2: Y(v), stroke: v === 0 ? C.axis : C.grid, 'stroke-width': v === 0 ? 1.5 : 1 }, svg); stxt(svg, { x: X0 - 10, y: Y(v) + 5, 'text-anchor': 'end', 'font-size': 14.5, fill: C['ink-3'], class: 'm' }, fmt(v, 0)); }
+  stxt(svg, { x: X0 - 10, y: PY - 14, 'text-anchor': 'end', 'font-size': 14.5, fill: C['ink-3'], class: 'm' }, '€/MWh');
+  // Fläche unter der Kurve (oben kräftiger), negative Preise rot
+  const defs = el('defs', {}, svg), gr = el('linearGradient', { id: 'pg', x1: 0, x2: 0, y1: 0, y2: 1 }, defs);
+  el('stop', { offset: '0', 'stop-color': C.ink, 'stop-opacity': .22 }, gr); el('stop', { offset: '1', 'stop-color': C.ink, 'stop-opacity': .03 }, gr);
+  let dPos = '', dNeg = '', pl = '', on = false;
+  prices.forEach((v, i) => {
+    if (v === null) { on = false; return; }
+    const y = Y(v), y0 = Y(0), seg = `M${X(i).toFixed(1)},${y0.toFixed(1)}V${y.toFixed(1)}H${(X(i) + dx).toFixed(1)}V${y0.toFixed(1)}Z`;
+    if (v >= 0) dPos += seg; else dNeg += seg;
+    pl += on ? `V${y.toFixed(1)}H${(X(i) + dx).toFixed(1)}` : `M${X(i).toFixed(1)},${y.toFixed(1)}H${(X(i) + dx).toFixed(1)}`; on = true;
   });
-  try { cf.result = cfCompute(); cf.error = null; } catch (e) { cf.error = e; cf.result = null; }
-  cf.at = Date.now();
-  if (!cf.result) { cf.started = false; setTimeout(cfLoad, 10 * 60000); }
-  renderCf();
-}
-/* Monotone Regression (Pool Adjacent Violators), gewichtet mit der Stundenzahl je Stufe */
-function pava(pts) {
-  const blocks = [];
-  for (const pt of pts) {
-    blocks.push({ p: pt.p, w: pt.n, k: 1 });
-    while (blocks.length > 1 && blocks[blocks.length - 2].p > blocks[blocks.length - 1].p) { const b = blocks.pop(), a = blocks.pop(); blocks.push({ p: (a.p * a.w + b.p * b.w) / (a.w + b.w), w: a.w + b.w, k: a.k + b.k }); }
+  el('path', { d: dPos, fill: 'url(#pg)' }, svg);
+  el('path', { d: dNeg, fill: C.bad, opacity: .55 }, svg);
+  el('path', { d: pl, fill: 'none', stroke: C.ink, 'stroke-width': 3, 'stroke-linejoin': 'round' }, svg);
+  const nx = ns >= t0 && ns < t1 ? X0 + (ns - t0) / SLOT * dx : null;
+  // direkte Beschriftung „Börsenpreis“ über der Kurve, an einer freien Stelle (nicht an der Jetzt-Marke)
+  const LW = 112, k = Math.ceil(LW / dx);
+  for (let i = 2; i + k < n; i += 2) {
+    const seg = prices.slice(i, i + k); if (seg.some(v => v === null)) continue;
+    const x = X(i), yl = Math.min(...seg.map(Y)) - 10;
+    if (yl - 17 < PY - 4) continue;
+    if (nx !== null && x < nx + 84 && x + LW > nx - 6) continue;
+    stxt(svg, { x, y: yl, 'font-size': 17, 'font-weight': 700, fill: C.ink }, 'Börsenpreis');
+    break;
   }
-  const out = []; for (const b of blocks) for (let i = 0; i < b.k; i++) out.push(b.p); return out;
-}
-function cfCompute() {
-  const { start, end } = cfWindow();
-  const g = (id, t) => { const m = cf.v[id]; if (!m) return null; const x = m.get(t); return x === undefined ? null : x; };
-  const sumOf = (ids, t) => { let s = 0; for (const id of ids) { const v = g(id, t); if (v === null) return null; s += v; } return s; };
-  const hours = []; let missing = 0;
-  for (let t = start; t < end; t += HOUR) {
-    const conv = sumOf(CF_IDS.conv, t), ee = sumOf(CF_IDS.ee, t), load = g('load', t), price = g('price', t);
-    if (conv === null || ee === null || load === null || price === null || load <= 0) { missing++; continue; }
-    hours.push({ t, conv, ee, load, price });
+  dayTimeLabels(svg, t0, t1, X0, dx, PY + PH + 24, null);
+  if (nx !== null) {
+    el('line', { x1: nx, x2: nx, y1: 4, y2: PY + PH, stroke: C.ink, 'stroke-width': 2 }, svg);
+    const p = val('price', ns);
+    if (p !== null) el('circle', { cx: nx + dx / 2, cy: Y(p), r: 6, fill: C.ink, stroke: C.surface, 'stroke-width': 2.5 }, svg);
+    nowPill(svg, nx, 4, 'jetzt', X1);
   }
-  if (hours.length < 24 * 30) throw new Error('zu wenig Stundendaten: ' + hours.length);
-  // 1. Angebotskurve des heutigen Parks: Preis über konventioneller Erzeugung, Stufen zu 1 GW, kleine Stufen zusammengelegt, monoton
-  const bins = new Map();
-  for (const h of hours) { const b = Math.floor(h.conv / CF.binMW); const o = bins.get(b) || { n: 0, sp: 0, sq: 0 }; o.n++; o.sp += h.price; o.sq += h.conv; bins.set(b, o); }
-  const raw = [...bins.keys()].sort((a, b) => a - b).map(b => { const o = bins.get(b); return { q: o.sq / o.n, p: o.sp / o.n, n: o.n }; });
-  const pts = [];
-  for (const b of raw) { const last = pts[pts.length - 1]; if (last && (b.n < CF.minBin || last.n < CF.minBin)) { const n = last.n + b.n; last.q = (last.q * last.n + b.q * b.n) / n; last.p = (last.p * last.n + b.p * b.n) / n; last.n = n; } else pts.push({ ...b }); }
-  const iso = pava(pts); pts.forEach((pt, i) => { pt.p = iso[i]; });
-  const emp = q => { if (q <= pts[0].q) return pts[0].p; for (let i = 1; i < pts.length; i++) if (q <= pts[i].q) { const a = pts[i - 1], b = pts[i]; return a.p + (b.p - a.p) * (q - a.q) / (b.q - a.q); } return pts[pts.length - 1].p; };
-  // 2. Neue GuD-Kraftwerke: so viel, dass der höchste Bedarf ohne Erneuerbare gedeckt ist; sie laufen vor allen Altanlagen, die teurer sind
-  const mc = marginalCost(CF.gud);
-  const qTop = Math.max(...hours.map(h => h.conv)), qCfMax = Math.max(...hours.map(h => h.conv + h.ee));
-  const gNew = Math.max(0, qCfMax - qTop);
-  let q1 = qTop;
-  if (pts[0].p >= mc) q1 = pts[0].q;
-  else for (let i = 1; i < pts.length; i++) if (pts[i].p >= mc) { const a = pts[i - 1], b = pts[i]; q1 = a.q + (b.q - a.q) * (mc - a.p) / (b.p - a.p); break; }
-  q1 = Math.min(q1, qTop);
-  const M = q => q <= q1 ? emp(q) : q <= q1 + gNew ? mc : emp(q - gNew);
-  // 3. Je Stunde Preis ohne Erneuerbare, verbrauchsgewichtete Mittel gesamt und je Monat
-  const months = new Map(); let L = 0, PL = 0, CL = 0, FL = 0, EE = 0, CONV = 0, low = 0;
-  for (const h of hours) {
-    const pcf = M(h.conv + h.ee); if (h.price < mc - 5) low++;
-    L += h.load; PL += h.price * h.load; CL += pcf * h.load; FL += emp(h.conv) * h.load; EE += h.ee; CONV += h.conv;
-    const p = tzParts(h.t), key = p.y * 100 + p.m, m = months.get(key) || { key, t: h.t, L: 0, PL: 0, CL: 0, EE: 0, G: 0, n: 0 };
-    m.L += h.load; m.PL += h.price * h.load; m.CL += pcf * h.load; m.EE += h.ee; m.G += h.ee + h.conv; m.n++; months.set(key, m);
-  }
-  // 4. Endkunde (ct/kWh): Börsendifferenz minus wegfallende Posten; L ist die Netzlast des Zeitraums in MWh
-  const pReal = PL / L, pCf = CL / L, dB = (pCf - pReal) / 10;
-  const eeg = CF.eeg / L / 10, cong = CF.congestion / L / 10, gudFix = gNew * 1000 * CF.gudFixed / L / 10;
-  const net = x => (dB + gudFix - CF.offshore - cong - x) * (1 + CF.vat) - eeg;
-  const mid = (CF.gridExp[0] + CF.gridExp[1]) / 2;
-  return {
-    start, end, hours: hours.length, missing, pts, mc, qTop, gNew, q1, pReal, pCf, pFit: FL / L, dB, gudFix, eeg, cong, offshore: CF.offshore, gridMid: mid, lowShare: low / hours.length,
-    vat: (dB + gudFix - CF.offshore - cong - mid) * CF.vat, net: net(mid), netLo: net(CF.gridExp[1]), netHi: net(CF.gridExp[0]),
-    L, EE, CONV, co2: EE * CF.gud.ef / (CF.gud.p.eta / 100), gasTh: EE / (CF.gud.p.eta / 100),
-    months: [...months.values()].sort((a, b) => a.key - b.key),
-  };
 }
 
-function renderCfProgress() { $('#cfProgress').textContent = cf.total ? `${cf.done} von ${cf.total} Wochendateien` : ''; }
-function renderCf() {
-  const r = cf.result, wait = $('#cfWait'), body = $('#cfBody'), st = $('#v2Stamp'); st.replaceChildren();
-  if (!r) {
-    body.hidden = true; wait.hidden = false;
-    wait.firstChild.textContent = cf.error ? 'SMARD-Stundendaten konnten nicht geladen werden, neuer Versuch in 10 Minuten.' : 'Rechnung läuft, Stundendaten der letzten 12 Monate werden geladen …';
-    renderCfProgress(); return;
+/* Leistung über den Tag: Wind und Sonne (ganz Deutschland) als Fläche, Speicher und Elektrolyseur um eine Mittellinie
+   (nach oben = speist ein, grün; nach unten = nimmt Strom auf, blau) */
+function renderGantt(results, slots) {
+  const svg = $('#ganttSvg'); svg.replaceChildren();
+  const OFF = 48 + 1 + 22, W = 1778, X0 = PX0 - OFF, X1 = PX1 - OFF, n = slots.length, dx = (X1 - X0) / n, X = i => X0 + i * dx;
+  const ns = nowSlot(), t0 = slots[0], t1 = slots[n - 1] + SLOT;
+  const nx = ns >= t0 && ns < t1 ? X0 + (ns - t0) / SLOT * dx : null;
+  const COL = { grp: 18, name: 164, pill: X0 - 16 };
+  const RH = 66, PAD = 6, GAP = 10, HY = 21, TOP = 34, TP = 6, TH = RH - 2 * TP;
+  const head = (x, text, anchor) => stxt(svg, { x, y: HY, 'text-anchor': anchor || 'start', 'font-size': 13, 'font-weight': 700, fill: C['ink-3'], 'letter-spacing': '.9' }, text.toUpperCase());
+  dayTimeLabels(svg, t0, t1, X0, dx, HY, nx !== null ? [nx - 34, nx + 104] : null);
+  const byId = Object.fromEntries(V2_ASSETS.map(a => [a.id, a]));
+  // Wind und Sonne: Einspeisung in ganz Deutschland (Messwert, danach Prognose) als Anteil der installierten Leistung
+  const EE_NAME = { pvp: 'Photovoltaik', wonp: 'Wind an Land', woffp: 'Wind auf See' };
+  const EE_FC = { pv: 'fcPV', won: 'fcWon', woff: 'fcWoff' };
+  const eeShare = a => slots.map(t => { const v = mw(a.src, t) ?? mw(EE_FC[a.src], t), inst = store.installed[a.src]; return v === null || !inst ? null : Math.max(0, v / inst); });
+  const avg = list => list.length ? fmt(list.reduce((s, v) => s + v, 0) / list.length, 0) : null;
+  const nowGW = a => { const lt = lastTs(a.src), v = lt !== null ? mw(a.src, lt) : null; return v === null ? null : v / 1000; };
+  const sub = (a, r) => {
+    if (a.type === 'ee') return `von ${fmt(store.installed[a.src] / 1000, 0)} GW installiert`;
+    const pr = i => val('price', slots[i]);
+    if (a.type === 'sto') {
+      const ch = [], dis = []; r.power.forEach((p, i) => { const q = pr(i); if (q === null || !p) return; (p < 0 ? ch : dis).push(q); });
+      return ch.length && dis.length ? `lädt Ø ${avg(ch)} · speist ein Ø ${avg(dis)} €/MWh` : 'heute kein Handel';
+    }
+    if (a.type === 'ely') return `läuft bis ${fmt(r.thresholds[0].v, 0)} €/MWh`;
+    return '';
+  };
+  // Rechteck über zusammenhängende Viertelstunden mit gleichem Wert
+  function bars(get, color, top, scale) {
+    let i = 0;
+    while (i < n) {
+      const v = get(i); if (!v) { i++; continue; }
+      let j = i + 1; while (j < n && Math.abs((get(j) || 0) - v) < 1e-6) j++;
+      const h = Math.max(1.5, v * scale);
+      el('rect', { x: X(i), y: top ? top - h : 0, width: (j - i) * dx, height: h, fill: color, opacity: .9 }, svg);
+      i = j;
+    }
   }
-  wait.hidden = true; body.hidden = false;
-  st.append('Zeitraum '); html('b', '', st, `${fmtMonth.format(r.start)} bis ${fmtMonth.format(r.end - DAY)}`); st.append(document.createElement('br'));
-  st.append(`${fmt(r.hours, 0)} Stunden${r.missing ? `, ${fmt(r.missing, 0)} ohne Daten` : ''} · gerechnet ${fmtTime.format(cf.at)} Uhr`);
-  // Ergebnis: Börsenpreis-Effekt der Erneuerbaren (Merit-Order), verbrauchsgewichtet, als Betrag mit Richtung
-  const cheaper = r.dB >= 0, v = 1 + CF.vat, eurHH = Math.abs(r.dB) * v * CF.household / 100;
-  $('#heroLabel').textContent = cheaper ? 'Strom an der Börse mit Erneuerbaren' : 'Strom an der Börse ohne Erneuerbare';
-  const hv = $('#heroValue'); hv.replaceChildren();
-  hv.append(fmt(Math.abs(r.dB), 1)); html('small', '', hv, 'ct/kWh'); html('span', 'pill cheap', hv, 'billiger');
-  // Auf die Stromrechnung: der Börsenpreis geht 1:1 in die Beschaffung (mit MwSt), Netz, Steuern, Abgaben und Vertrieb bleiben gleich
-  const dBill = r.dB * v, hp = CF.householdPrice, hpCf = hp + dBill;
-  const hs = $('#heroSub'); hs.replaceChildren();
-  hs.append(`Im Mittel `); html('b', '', hs, `${fmt(Math.abs(r.pCf - r.pReal), 0)} €/MWh`); hs.append(` ${cheaper ? 'weniger' : 'mehr'}, verbrauchsgewichtet. Auf der Stromrechnung: `); html('b', '', hs, `${fmt(hp, 1)} statt ${fmt(hpCf, 1)} ct/kWh`); hs.append(` (${fmtSigned(-dBill / hpCf * 100, 0)} %), bei ${fmt(CF.household, 0)} kWh rund `); html('b', '', hs, `${fmt(eurHH, 0)} €`); hs.append(` im Jahr ${cheaper ? 'weniger' : 'mehr'}.`);
-  const box = $('#ktiles'); box.replaceChildren();
-  function ktile(label, value, unit, cls, sub) {
-    const t = html('div', 'ktile', box); html('div', 'label', t, label);
-    const vv = html('div', 'value ' + cls, t, value); html('small', '', vv, unit);
-    const sd = html('div', 'sub', t); for (const part of sub) { if (Array.isArray(part)) html('b', '', sd, part[0]); else sd.append(part); }
+  function barsDown(get, color, y0, scale) {
+    let i = 0;
+    while (i < n) {
+      const v = get(i); if (!v) { i++; continue; }
+      let j = i + 1; while (j < n && Math.abs((get(j) || 0) - v) < 1e-6) j++;
+      el('rect', { x: X(i), y: y0, width: (j - i) * dx, height: Math.max(1.5, v * scale), fill: color, opacity: .9 }, svg);
+      i = j;
+    }
   }
-  ktile('Mit Erneuerbaren (tatsächlich)', fmt(r.pReal, 0), '€/MWh', '', ['Börsenpreis im Mittel der letzten 12 Monate · in ', [fmt(r.lowShare * 100, 0) + ' %'], ' der Stunden drücken Wind und Sonne den Preis unter die Gaskraftwerke']);
-  ktile('Ohne Erneuerbare (Rechnung)', fmt(r.pCf, 0), '€/MWh', 'up', ['Gaskraftwerke setzen den Preis in fast jeder Stunde, Grenzkosten ', [fmt(r.mc, 0) + ' €/MWh'], ' bei Erdgas ', [fmt(G.gas, 0)], ' €/MWh und CO₂ ', [fmt(G.co2, 0)], ' €/t']);
-  ktile('Erneuerbare lieferten', fmt(r.EE / 1e6, 0), 'TWh', 'ee', [[fmt(r.EE / (r.EE + r.CONV) * 100, 0) + ' %'], ' der Stromerzeugung · als Gasstrom wären das mindestens ', [fmt(r.co2 / 1e6, 0) + ' Mio. t CO₂'], ' mehr']);
-  const notes = $('#cfNotes'); notes.replaceChildren();
-  const p1 = html('p', '', notes); html('b', '', p1, 'Rechnung: ');
-  p1.append(`Stundenwerte von SMARD (Bundesnetzagentur, CC BY 4.0), letzte 12 volle Monate. Preis ohne Erneuerbare aus der Angebotskurve des heutigen Kohle- und Gasparks (Börsenpreis über konventioneller Erzeugung, trifft den realen Mittelwert auf ${fmtSigned(r.pFit - r.pReal, 1)} €/MWh) plus ${fmt(r.gNew / 1000, 0)} GW neue GuD-Kraftwerke zu Grenzkosten. Gas- und CO₂-Preis unverändert (bei ${fmt(r.gasTh / 1e6, 0)} TWh mehr Gasbedarf stiegen sie eher), Import/Export wie real.`);
-  const p2 = html('p', '', notes); html('b', '', p2, 'Stromrechnung: ');
-  p2.append(`Haushaltspreis ${fmt(CF.householdPrice, 1)} ct/kWh bei ${fmt(CF.household, 0)} kWh/a (BDEW-Strompreisanalyse, Oktober 2025); der Börsenpreis geht mit ${CF.vat * 100} % MwSt in die Beschaffung, Netzentgelte, Steuern, Abgaben und Vertrieb bleiben gleich. `);
-  html('b', '', p2, 'Nicht enthalten: '); p2.append(`EEG-Förderung (${fmt(CF.eeg / 1e9, 1)} Mrd. €/a aus dem Bundeshaushalt) und Netzkosten der Erneuerbaren (Offshore-Netzumlage, Netzengpassmanagement, Netzausbau) sowie Bau und Betrieb der ${fmt(r.gNew / 1000, 0)} GW Gaskraftwerke, die es ohne Erneuerbare bräuchte. Die Zahl beschreibt allein den Börsenpreis.`);
+  // Fläche als Treppe (Viertelstunden), Werte 0…1
+  function area(get, color, yb, scale) {
+    let d = '', on = false, last = null;
+    for (let i = 0; i <= n; i++) {
+      const v = i < n ? get(i) : null;
+      if (v === null || v <= 0) { if (on) { d += `L${X(i).toFixed(1)},${yb}Z`; on = false; } continue; }
+      const y = (yb - Math.max(1.5, v * scale)).toFixed(1);
+      d += on ? `L${X(i).toFixed(1)},${y}L${(X(i) + dx).toFixed(1)},${y}` : `M${X(i).toFixed(1)},${yb}L${X(i).toFixed(1)},${y}L${(X(i) + dx).toFixed(1)},${y}`;
+      on = true; last = i;
+    }
+    if (d) el('path', { d, fill: color, opacity: .9 }, svg);
+    return last;
+  }
+  let y = TOP;
+  for (const g of V2_GROUPS) {
+    const list = g.assets.map(id => byId[id]).filter(Boolean), h = list.length * RH + 2 * PAD;
+    el('rect', { x: 0, y, width: W, height: h, rx: 10, fill: C['surface-2'] }, svg);
+    // Gruppenname, darunter klein: ganz Deutschland / Beispielanlagen (bei Wind und Sonne mit Messzeitpunkt)
+    const lt = g.id === 'ee' ? lastTs('pv') : null, notes = g.note.concat(lt !== null ? [`Stand ${fmtTime.format(lt)} Uhr`] : []);
+    const lines = g.label.length + notes.length, y0 = y + h / 2 + 5 - (lines - 1) / 2 * 18 + (notes.length ? -2 : 0);
+    g.label.forEach((s, k) => stxt(svg, { x: COL.grp, y: y0 + k * 18, 'font-size': 13.5, 'font-weight': 700, fill: C['ink-2'], 'letter-spacing': '.7' }, s.toUpperCase()));
+    notes.forEach((s, k) => stxt(svg, { x: COL.grp, y: y0 + (g.label.length + k) * 18 + 4, 'font-size': 14, fill: C['ink-3'] }, s));
+    let ry = y + PAD;
+    for (const a of list) {
+      const r = results[a.id];
+      stxt(svg, { x: COL.name, y: ry + 29, 'font-size': 21, fill: C.ink }, EE_NAME[a.id] || (a.id === 'psw' ? 'Pumpspeicherwerk' : a.name));
+      stxt(svg, { x: COL.name, y: ry + 52, 'font-size': 16, fill: C['ink-2'] }, sub(a, r));
+      if (a.type === 'ee') {
+        // aktuelle Leistung groß in der Jetzt-Spalte
+        const v = nowGW(a);
+        stxt(svg, { x: COL.pill, y: ry + RH / 2 + 9, 'text-anchor': 'end', 'font-size': 26, 'font-weight': 700, fill: C.ink }, v === null ? '–' : `${fmt(v, 1)} GW`);
+      } else {
+        const pill = a.type === 'ely' && r.now.cls === 'run' ? ['läuft', 'charge'] : [r.now.text, r.now.cls];
+        pillSvg(svg, COL.pill, ry + (RH - 24) / 2, pill[0], pill[1], 'end');
+      }
+      const ty = ry + TP, yb = ty + TH, ym = ty + TH / 2;
+      el('rect', { x: X0, y: ty, width: X1 - X0, height: TH, rx: 5, fill: C.stage }, svg);
+      for (const t of hourTicks(t0, t1, 3)) { const x = X0 + (t.t - t0) / SLOT * dx; if (x <= X0 + 1 || x >= X1 - 1) continue; el('line', { x1: x, x2: x, y1: ty, y2: yb, stroke: C.grid, 'stroke-width': 1.5 }, svg); }
+      if (a.type === 'ee') {
+        // Einspeisung grün, Höhe = Anteil an der installierten Leistung in Deutschland
+        const sh = eeShare(a);
+        area(i => sh[i] === null ? null : Math.min(1, sh[i]), C.good, yb, TH - 4);
+      } else {
+        // um die Mittellinie: Einspeisen nach oben, Strom aufnehmen nach unten
+        const half = TH / 2 - 3;
+        el('line', { x1: X0, x2: X1, y1: ym, y2: ym, stroke: C.axis, 'stroke-width': 1 }, svg);
+        if (a.type === 'sto') bars(i => r.known[i] && r.power[i] > 0 ? Math.min(1, r.power[i] / a.p.P) : 0, C.good, ym, half);
+        barsDown(i => {
+          if (!r.known[i]) return 0;
+          if (a.type === 'sto') return r.power[i] < 0 ? Math.min(1, -r.power[i] / a.p.P) : 0;
+          return r.run[i] ? 1 : 0;
+        }, C.info, ym, half);
+      }
+      ry += RH;
+    }
+    y += h + GAP;
+  }
+  const rowsBottom = y - GAP;
+  if (nx !== null) {
+    el('line', { x1: nx, x2: nx, y1: 4, y2: rowsBottom, stroke: C.ink, 'stroke-width': 2 }, svg);
+    nowPill(svg, nx, 4, 'jetzt', X1);
+  }
 }
 
 /* ---------- Gesamtaufbau ---------- */
@@ -742,9 +822,11 @@ function renderAll() {
   s1.append('Messwerte von '); html('b', '', s1, kTs === null ? '–' : fmtTime.format(kTs) + ' Uhr'); s1.append(document.createElement('br'));
   s1.append('Börsenpreis für '); html('b', '', s1, `${fmtTime.format(ns)}–${fmtTime.format(ns + SLOT)} Uhr`);
   const t0 = midnight(Date.now()), slots = slotsBetween(t0, addDays(t0, 1));
-  renderTiles(simulate(BAT, slots)); renderMix();
+  const results = { bat: simulate(BAT, slots), psw: simulate(PSW, slots), ely: simulateEly(ELY, slots) };
+  renderTiles(results.bat); renderMix();
+  const s2 = $('#v2Stamp'); s2.replaceChildren(); s2.append(fmtDayLong.format(Date.now())); s2.append(document.createElement('br')); s2.append('Annahmen in den Fußnoten');
+  renderNowCard(); renderPriceChart(results, slots); renderGantt(results, slots);
   renderStatus();
-  if (!cf.started) cfLoad();
 }
 function renderStatus() {
   const s = $('#status'); s.replaceChildren(); s.classList.toggle('err', !!state.error);
@@ -821,7 +903,6 @@ setInterval(() => {
 }, 1000);
 $('#clock').textContent = fmtTime.format(Date.now());
 updateFsHint(); keepAwake();
-renderCf();
 show(0);
 refresh();
 </script>
