@@ -708,7 +708,7 @@ function renderCf() {
   hv.append(fmt(Math.abs(r.net), 1)); html('small', '', hv, 'ct/kWh'); html('span', 'pill ' + (teurer ? 'curt' : 'charge'), hv, teurer ? 'teurer' : 'billiger');
   const hs = $('#heroSub'); hs.replaceChildren();
   const sameSign = (r.netLo >= 0) === (r.netHi >= 0);
-  const span = sameSign ? `${fmt(Math.abs(eur(r.netLo)), 0)} bis ${fmt(Math.abs(eur(r.netHi)), 0)} €` : `zwischen ${fmt(Math.abs(eur(r.netHi)), 0)} € mehr und ${fmt(Math.abs(eur(r.netLo)), 0)} € weniger`;
+  const span = sameSign ? `${fmt(Math.min(Math.abs(eur(r.netLo)), Math.abs(eur(r.netHi))), 0)} bis ${fmt(Math.max(Math.abs(eur(r.netLo)), Math.abs(eur(r.netHi))), 0)} €` : `zwischen ${fmt(Math.abs(eur(r.netHi)), 0)} € mehr und ${fmt(Math.abs(eur(r.netLo)), 0)} € weniger`;
   hs.append(`Das sind rund `); html('b', '', hs, `${fmt(Math.abs(eur(r.net)), 0)} €`); hs.append(` im Jahr ${teurer ? 'mehr' : 'weniger'} bei ${fmt(CF.household, 0)} kWh (je nach Netzausbau-Annahme ${span}), inklusive Mehrwertsteuer.`);
   // Drei Posten, alle mit MwSt, so dass sie sich zum Ergebnis addieren (EEG-Förderung ohne MwSt, sie kommt aus dem Bundeshaushalt)
   const box = $('#ktiles'); box.replaceChildren();
