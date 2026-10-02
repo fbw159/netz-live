@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Netz-Live</title>
-<meta name="description" content="Netz-Live als Flur-Anzeige: Stromverbrauch, Erneuerbaren-Anteil, Speicher und Strommix Deutschland, dazu die Rechnung, was Strom in den letzten 12 Monaten ohne Erneuerbare gekostet hätte. Wechselt alle 30 Sekunden.">
+<meta name="description" content="Netz-Live als Flur-Anzeige: Stromverbrauch, Erneuerbaren-Anteil, Speicher und Strommix Deutschland, dazu die Rechnung, was Strom an der Börse in den letzten 12 Monaten ohne Erneuerbare gekostet hätte. Wechselt alle 30 Sekunden.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
@@ -122,10 +122,11 @@ svg .m { font-family: var(--font-mono); }
 /* Ansicht 2: Was hätte Strom ohne Erneuerbare gekostet? Eine Ergebniskachel, darunter drei Posten, unten Annahmen. */
 #hero { left: 48px; right: 48px; top: 140px; height: 300px; padding: 26px 40px 24px; display: flex; flex-direction: column; justify-content: space-between; }
 #hero .label { font-size: 28px; color: var(--ink-2); white-space: nowrap; }
+#hero .value .pill.cheap { background: var(--good-bg); color: var(--good); }
 #hero .value { font-size: 150px; font-weight: 600; line-height: 1; letter-spacing: -.035em; white-space: nowrap; display: flex; align-items: baseline; gap: 26px; }
 #hero .value small { font-size: 44px; font-weight: 500; color: var(--ink-2); letter-spacing: 0; }
 #hero .value .pill { font-size: 26px; padding: 10px 22px; align-self: center; margin-left: 10px; }
-#hero .sub { font-size: 26px; color: var(--ink-2); line-height: 1.35; white-space: nowrap; }
+#hero .sub { font-size: 26px; color: var(--ink-2); line-height: 1.35; }
 #hero .sub b { color: var(--ink); font-weight: 600; font-family: var(--font-mono); }
 .ktiles { position: absolute; left: 48px; right: 48px; top: 456px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .ktile { height: 330px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px 28px 20px; display: flex; flex-direction: column; min-width: 0; }
@@ -134,6 +135,7 @@ svg .m { font-family: var(--font-mono); }
 .ktile .value small { font-size: 30px; font-weight: 500; color: var(--ink-2); margin-left: 10px; letter-spacing: 0; }
 .ktile .value.up { color: var(--warn); }
 .ktile .value.down { color: var(--info); }
+.ktile .value.ee { color: var(--good); }
 .ktile .sub { font-size: 21px; color: var(--ink-2); line-height: 1.35; }
 .ktile .sub b { color: var(--ink); font-weight: 600; font-family: var(--font-mono); }
 .cf-wait { position: absolute; left: 0; right: 0; top: 46%; text-align: center; font-size: 26px; color: var(--ink-2); }
@@ -151,7 +153,7 @@ svg .m { font-family: var(--font-mono); }
     <div class="topmid">
       <div class="tabs">
         <div class="tab on"><b>1</b>Übersicht<span class="bar"></span></div>
-        <div class="tab"><b>2</b>Ohne Erneuerbare<span class="bar"></span></div>
+        <div class="tab"><b>2</b>Erneuerbare und Strompreis<span class="bar"></span></div>
       </div>
       <span class="paused" id="paused" hidden>pausiert</span>
       <div class="clockbox">
@@ -183,17 +185,17 @@ svg .m { font-family: var(--font-mono); }
   </section>
 
   <!-- Ansicht 2: Was hätte Strom ohne Erneuerbare gekostet? -->
-  <section class="view" id="v2" aria-label="Strom ohne Erneuerbare, letzte 12 Monate">
+  <section class="view" id="v2" aria-label="Börsenstrompreis mit und ohne Erneuerbare, letzte 12 Monate">
     <div class="vhead">
       <div>
-        <h1>Was hätte Strom ohne Erneuerbare gekostet?</h1>
-        <p id="v2Sub">Letzte 12 Monate, Stunde für Stunde nachgerechnet: Erneuerbare ersetzt durch Kohle- und Gaskraftwerke.</p>
+        <h1>Was Erneuerbare am Strompreis bewirken</h1>
+        <p id="v2Sub">Börsenpreis der letzten 12 Monate, Stunde für Stunde nachgerechnet: ohne Erneuerbare hätten Gaskraftwerke liefern müssen.</p>
       </div>
       <div class="stamp" id="v2Stamp"></div>
     </div>
     <div id="cfBody" hidden>
       <div class="card" id="hero">
-        <div class="label">Strom für Haushalte ohne Erneuerbare</div>
+        <div class="label" id="heroLabel">Strom an der Börse mit Erneuerbaren</div>
         <div class="value" id="heroValue"></div>
         <div class="sub" id="heroSub"></div>
       </div>
@@ -671,9 +673,9 @@ function cfCompute() {
   q1 = Math.min(q1, qTop);
   const M = q => q <= q1 ? emp(q) : q <= q1 + gNew ? mc : emp(q - gNew);
   // 3. Je Stunde Preis ohne Erneuerbare, verbrauchsgewichtete Mittel gesamt und je Monat
-  const months = new Map(); let L = 0, PL = 0, CL = 0, FL = 0, EE = 0, CONV = 0;
+  const months = new Map(); let L = 0, PL = 0, CL = 0, FL = 0, EE = 0, CONV = 0, low = 0;
   for (const h of hours) {
-    const pcf = M(h.conv + h.ee);
+    const pcf = M(h.conv + h.ee); if (h.price < mc - 5) low++;
     L += h.load; PL += h.price * h.load; CL += pcf * h.load; FL += emp(h.conv) * h.load; EE += h.ee; CONV += h.conv;
     const p = tzParts(h.t), key = p.y * 100 + p.m, m = months.get(key) || { key, t: h.t, L: 0, PL: 0, CL: 0, EE: 0, G: 0, n: 0 };
     m.L += h.load; m.PL += h.price * h.load; m.CL += pcf * h.load; m.EE += h.ee; m.G += h.ee + h.conv; m.n++; months.set(key, m);
@@ -684,7 +686,7 @@ function cfCompute() {
   const net = x => (dB + gudFix - CF.offshore - cong - x) * (1 + CF.vat) - eeg;
   const mid = (CF.gridExp[0] + CF.gridExp[1]) / 2;
   return {
-    start, end, hours: hours.length, missing, pts, mc, qTop, gNew, q1, pReal, pCf, pFit: FL / L, dB, gudFix, eeg, cong, offshore: CF.offshore, gridMid: mid,
+    start, end, hours: hours.length, missing, pts, mc, qTop, gNew, q1, pReal, pCf, pFit: FL / L, dB, gudFix, eeg, cong, offshore: CF.offshore, gridMid: mid, lowShare: low / hours.length,
     vat: (dB + gudFix - CF.offshore - cong - mid) * CF.vat, net: net(mid), netLo: net(CF.gridExp[1]), netHi: net(CF.gridExp[0]),
     L, EE, CONV, co2: EE * CF.gud.ef / (CF.gud.p.eta / 100), gasTh: EE / (CF.gud.p.eta / 100),
     months: [...months.values()].sort((a, b) => a.key - b.key),
@@ -702,30 +704,27 @@ function renderCf() {
   wait.hidden = true; body.hidden = false;
   st.append('Zeitraum '); html('b', '', st, `${fmtMonth.format(r.start)} bis ${fmtMonth.format(r.end - DAY)}`); st.append(document.createElement('br'));
   st.append(`${fmt(r.hours, 0)} Stunden${r.missing ? `, ${fmt(r.missing, 0)} ohne Daten` : ''} · gerechnet ${fmtTime.format(cf.at)} Uhr`);
-  const eur = x => x * CF.household / 100, teurer = r.net >= 0, v = 1 + CF.vat;
-  // Ergebnis: Betrag groß, Richtung als Wort
+  // Ergebnis: Börsenpreis-Effekt der Erneuerbaren (Merit-Order), verbrauchsgewichtet, als Betrag mit Richtung
+  const cheaper = r.dB >= 0, v = 1 + CF.vat, eurHH = Math.abs(r.dB) * v * CF.household / 100;
+  $('#heroLabel').textContent = cheaper ? 'Strom an der Börse mit Erneuerbaren' : 'Strom an der Börse ohne Erneuerbare';
   const hv = $('#heroValue'); hv.replaceChildren();
-  hv.append(fmt(Math.abs(r.net), 1)); html('small', '', hv, 'ct/kWh'); html('span', 'pill ' + (teurer ? 'curt' : 'charge'), hv, teurer ? 'teurer' : 'billiger');
+  hv.append(fmt(Math.abs(r.dB), 1)); html('small', '', hv, 'ct/kWh'); html('span', 'pill cheap', hv, 'billiger');
   const hs = $('#heroSub'); hs.replaceChildren();
-  const sameSign = (r.netLo >= 0) === (r.netHi >= 0);
-  const span = sameSign ? `${fmt(Math.min(Math.abs(eur(r.netLo)), Math.abs(eur(r.netHi))), 0)} bis ${fmt(Math.max(Math.abs(eur(r.netLo)), Math.abs(eur(r.netHi))), 0)} €` : `zwischen ${fmt(Math.abs(eur(r.netHi)), 0)} € mehr und ${fmt(Math.abs(eur(r.netLo)), 0)} € weniger`;
-  hs.append(`Das sind rund `); html('b', '', hs, `${fmt(Math.abs(eur(r.net)), 0)} €`); hs.append(` im Jahr ${teurer ? 'mehr' : 'weniger'} bei ${fmt(CF.household, 0)} kWh (je nach Netzausbau-Annahme ${span}), inklusive Mehrwertsteuer.`);
-  // Drei Posten, alle mit MwSt, so dass sie sich zum Ergebnis addieren (EEG-Förderung ohne MwSt, sie kommt aus dem Bundeshaushalt)
+  hs.append(`Im Mittel `); html('b', '', hs, `${fmt(Math.abs(r.pCf - r.pReal), 0)} €/MWh`); hs.append(` ${cheaper ? 'weniger' : 'mehr'}, verbrauchsgewichtet · für einen Haushalt mit ${fmt(CF.household, 0)} kWh rund `); html('b', '', hs, `${fmt(eurHH, 0)} €`); hs.append(' im Jahr (mit Mehrwertsteuer)');
   const box = $('#ktiles'); box.replaceChildren();
-  function ktile(label, value, cls, sub) {
+  function ktile(label, value, unit, cls, sub) {
     const t = html('div', 'ktile', box); html('div', 'label', t, label);
-    const vv = html('div', 'value ' + cls, t, value); html('small', '', vv, 'ct/kWh');
+    const vv = html('div', 'value ' + cls, t, value); html('small', '', vv, unit);
     const sd = html('div', 'sub', t); for (const part of sub) { if (Array.isArray(part)) html('b', '', sd, part[0]); else sd.append(part); }
   }
-  const grid = (r.offshore + r.cong + r.gridMid) * v, drop = grid + r.eeg;
-  ktile(r.dB >= 0 ? 'Börsenstrom wird teurer' : 'Börsenstrom wird billiger', fmtSigned(r.dB * v, 1), r.dB >= 0 ? 'up' : 'down', ['Börsenpreis im Mittel ', [fmt(r.pReal, 0)], ' → ', [fmt(r.pCf, 0) + ' €/MWh'], ', weil Gaskraftwerke liefern, was Wind, Sonne, Biomasse und Wasser erzeugt haben']);
-  ktile('Neue Gaskraftwerke müssen bezahlt werden', fmtSigned(r.gudFix * v, 1), 'up', [[fmt(r.gNew / 1000, 0) + ' GW'], ' zusätzlich für die Spitzenlast, Bau und Betrieb umgelegt auf jede Kilowattstunde']);
-  ktile('Förderung und Netzkosten fallen weg', fmtSigned(-drop, 1), 'down', ['EEG-Förderung ', [fmt(r.eeg, 1)], ' · Offshore-Umlage, Redispatch und Netzausbau ', [fmt(grid, 1)], ' (Netzausbau als Spanne)']);
+  ktile('Mit Erneuerbaren (tatsächlich)', fmt(r.pReal, 0), '€/MWh', '', ['Börsenpreis im Mittel der letzten 12 Monate · in ', [fmt(r.lowShare * 100, 0) + ' %'], ' der Stunden drücken Wind und Sonne den Preis unter die Gaskraftwerke']);
+  ktile('Ohne Erneuerbare (Rechnung)', fmt(r.pCf, 0), '€/MWh', 'up', ['Gaskraftwerke setzen den Preis in fast jeder Stunde, Grenzkosten ', [fmt(r.mc, 0) + ' €/MWh'], ' bei Erdgas ', [fmt(G.gas, 0)], ' €/MWh und CO₂ ', [fmt(G.co2, 0)], ' €/t']);
+  ktile('Erneuerbare lieferten', fmt(r.EE / 1e6, 0), 'TWh', 'ee', [[fmt(r.EE / (r.EE + r.CONV) * 100, 0) + ' %'], ' der Stromerzeugung · als Gasstrom wären das mindestens ', [fmt(r.co2 / 1e6, 0) + ' Mio. t CO₂'], ' mehr']);
   const notes = $('#cfNotes'); notes.replaceChildren();
   const p1 = html('p', '', notes); html('b', '', p1, 'Rechnung: ');
-  p1.append(`Stundenwerte von SMARD (Bundesnetzagentur, CC BY 4.0), letzte 12 volle Monate. Wind, Sonne, Biomasse und Wasserkraft (${fmt(r.EE / 1e6, 0)} TWh, ${fmt(r.EE / (r.EE + r.CONV) * 100, 0)} % der Erzeugung) werden durch Kohle- und Gaskraftwerke ersetzt. Preis je Stunde aus der Angebotskurve des heutigen Parks (Börsenpreis über konventioneller Erzeugung, trifft den realen Mittelwert auf ${fmtSigned(r.pFit - r.pReal, 1)} €/MWh) plus ${fmt(r.gNew / 1000, 0)} GW neue GuD-Kraftwerke mit Grenzkosten ${fmt(r.mc, 0)} €/MWh (Erdgas ${fmt(G.gas, 0)} €/MWh, CO₂ ${fmt(G.co2, 0)} €/t) und Fixkosten ${fmt(CF.gudFixed, 0)} €/kW/a. Gas- und CO₂-Preis unverändert, Import/Export wie real.`);
-  const p2 = html('p', '', notes); html('b', '', p2, 'Wegfallend: ');
-  p2.append(`EEG-Förderung ${fmt(CF.eeg / 1e9, 1)} Mrd. €/a (EEG-Konto 2025, ÜNB-Prognose 2026), Netzengpassmanagement ${fmt(CF.congestion / 1e9, 2)} Mrd. €/a (BNetzA, 2025), Offshore-Netzumlage ${fmt(CF.offshore, 3)} ct/kWh (2026), Netzausbau für Erneuerbare ${fmt(CF.gridExp[0], 0)} bis ${fmt(CF.gridExp[1], 0)} ct/kWh (Schätzung). Umgelegt auf die Netzlast des Zeitraums (${fmt(r.L / 1e6, 0)} TWh). Haushalt ${fmt(CF.household, 0)} kWh/a, Rechnungsposten mit ${CF.vat * 100} % MwSt, Förderung aus dem Bundeshaushalt ohne.`);
+  p1.append(`Stundenwerte von SMARD (Bundesnetzagentur, CC BY 4.0), letzte 12 volle Monate. Preis ohne Erneuerbare aus der Angebotskurve des heutigen Kohle- und Gasparks (Börsenpreis über konventioneller Erzeugung, trifft den realen Mittelwert auf ${fmtSigned(r.pFit - r.pReal, 1)} €/MWh) plus ${fmt(r.gNew / 1000, 0)} GW neue GuD-Kraftwerke zu Grenzkosten. Gas- und CO₂-Preis unverändert (bei ${fmt(r.gasTh / 1e6, 0)} TWh mehr Gasbedarf stiegen sie eher), Import/Export wie real.`);
+  const p2 = html('p', '', notes); html('b', '', p2, 'Nicht enthalten: ');
+  p2.append(`EEG-Förderung (${fmt(CF.eeg / 1e9, 1)} Mrd. €/a aus dem Bundeshaushalt) und Netzkosten der Erneuerbaren (Offshore-Netzumlage, Netzengpassmanagement, Netzausbau) sowie Bau und Betrieb der ${fmt(r.gNew / 1000, 0)} GW Gaskraftwerke, die es ohne Erneuerbare bräuchte. Die Zahl beschreibt allein den Börsenpreis.`);
 }
 
 /* ---------- Gesamtaufbau ---------- */
