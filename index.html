@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Netz-Live</title>
-<meta name="description" content="Netz-Live als Flur-Anzeige: Stromverbrauch, Erneuerbaren-Anteil, Speicher und Strommix Deutschland, dazu Börsenpreis, Wind, Sonne und Pumpspeicher über den Tag. Wechselt alle 30 Sekunden.">
+<meta name="description" content="Netz-Live als Flur-Anzeige: Stromverbrauch, Erneuerbaren-Anteil, Speicher und Strommix Deutschland, dazu Börsenpreis, Wind und Sonne über den Tag. Wechselt alle 30 Sekunden.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
@@ -174,12 +174,12 @@ svg .m { font-family: var(--font-mono); }
     </div>
     <div class="tiles" id="tiles2"></div>
     <div class="card" id="dayCard">
-      <h2>Heute 0–24 Uhr <span>Börsenpreis, Pumpspeicher, Wind und Sonne</span></h2>
-      <svg id="daySvg" viewBox="0 0 1012 640" role="img" aria-label="Börsenpreis, Pumpspeicher sowie Wind und Sonne heute"></svg>
+      <h2>Heute 0–24 Uhr <span>Börsenpreis, Wind und Sonne</span></h2>
+      <svg id="daySvg" viewBox="0 0 1012 640" role="img" aria-label="Börsenpreis sowie Wind und Sonne heute"></svg>
       <div id="dayLegend"></div>
     </div>
     <div class="vfoot">
-      <span><b>Daten:</b> Bundesnetzagentur | SMARD.de (CC BY 4.0). Wind und Sonne: ganz Deutschland, ab Datenstand Prognose. Pumpspeicher 300 MW / 2.400 MWh (78 %) und Elektrolyseur 10 MW (55 kWh/kg H₂, 6 €/kg): Beispielanlagen.</span>
+      <span><b>Daten:</b> Bundesnetzagentur | SMARD.de (CC BY 4.0). Wind und Sonne: ganz Deutschland, ab Datenstand Prognose. Elektrolyseur: Beispielanlage 10 MW, 55 kWh/kg H₂, Erlös 6 €/kg.</span>
     </div>
   </section>
   <div class="loading" id="loading">Daten werden geladen …</div>
@@ -376,8 +376,7 @@ function simulate(a, slots) {
   return out;
 }
 
-/* ---------- Beispielanlagen für Ansicht 2 (Batterie = BAT wie in Ansicht 1) ---------- */
-const PSW = { id: 'psw', name: 'Pumpspeicherkraftwerk', short: 'Pumpspeicher', type: 'sto', p: { P: 300, E: 2400, eta: 78 } };
+/* ---------- Beispielanlage für Ansicht 2: Elektrolyseur ---------- */
 const ELY = { id: 'ely', name: 'Elektrolyseur (PEM)', short: 'Elektrolyseur', type: 'ely', p: { P: 10, spec: 55, h2: 6, fee: 0 } };
 function elyBreakEven(a) { return a.p.h2 * 1000 / a.p.spec - a.p.fee; }
 /* Elektrolyseur: läuft mit voller Leistung, solange der Börsenpreis unter dem Erlös je MWh Strom liegt */
@@ -584,7 +583,7 @@ function renderReadout(k, genEnd) {
 
 /* ---------- Ansicht 2: Wind, Sonne und Speicher heute (Aufbau wie Ansicht 1) ----------
    Links drei Kacheln (Börsenpreis jetzt, Wind + Sonne, Elektrolyseur), rechts ein Tagesdiagramm 0–24 Uhr:
-   oben Börsenpreis, in der Mitte Pumpspeicher (Beispielanlage), unten Wind und Sonne für ganz Deutschland. */
+   oben Börsenpreis, unten Wind und Sonne für ganz Deutschland. */
 function dayTimeLabels(svg, t0, t1, X0, dx, y) {
   for (const t of hourTicks(t0, t1, 3)) {
     const x = X0 + (t.t - t0) / SLOT * dx, first = t.t <= t0, last = t.t >= t1;
@@ -623,7 +622,7 @@ function renderDay2(results, slots) {
   const svg = $('#daySvg'); svg.replaceChildren();
   const W = 1012, P = { x: 56, w: W - 56 - 14 }, n = slots.length, dx = P.w / n, X = i => P.x + i * dx;
   const ns = nowSlot(), t0 = slots[0], t1 = slots[n - 1] + SLOT, nx = ns >= t0 && ns < t1 ? P.x + (ns - t0) / SLOT * dx : null;
-  const A = { y: 40, h: 196 }, B = { y: 278, h: 52 }, Cc = { y: 370, h: 222 };   // Preis, Pumpspeicher, Wind + Sonne
+  const A = { y: 40, h: 236 }, Cc = { y: 336, h: 256 };   // Preis, Wind + Sonne
   const title = (y, text, sub) => { const t = stxt(svg, { x: P.x, y, 'font-size': 17, 'font-weight': 600, fill: C['ink-2'] }, text); if (sub) { const s = el('tspan', { 'font-weight': 400, fill: C['ink-3'], dx: 10 }, t); s.textContent = sub; } };
   // 1) Börsenpreis
   const prices = slots.map(t => val('price', t)), known = prices.filter(v => v !== null);
@@ -642,19 +641,6 @@ function renderDay2(results, slots) {
   });
   el('path', { d: dPos, fill: 'url(#pg2)' }, svg); el('path', { d: dNeg, fill: C.bad, opacity: .55 }, svg);
   el('path', { d: pl, fill: 'none', stroke: C.ink, 'stroke-width': 3, 'stroke-linejoin': 'round' }, svg);
-  // 2) Pumpspeicher: nach oben speist ein (grün), nach unten lädt (blau)
-  const r = results.psw, ym = B.y + B.h / 2, half = B.h / 2 - 2;
-  title(B.y - 12, 'Pumpspeicher', 'Beispielanlage 300 MW');
-  el('rect', { x: P.x, y: B.y, width: P.w, height: B.h, rx: 5, fill: C.stage }, svg);
-  el('line', { x1: P.x, x2: P.x + P.w, y1: ym, y2: ym, stroke: C.axis, 'stroke-width': 1 }, svg);
-  let i = 0;
-  while (i < n) {
-    const pw = r.known[i] ? r.power[i] : 0; if (!pw) { i++; continue; }
-    let j = i + 1; while (j < n && r.known[j] && Math.sign(r.power[j] || 0) === Math.sign(pw)) j++;
-    const h = Math.max(2, Math.min(1, Math.abs(pw) / PSW.p.P) * half);
-    el('rect', { x: X(i), y: pw > 0 ? ym - h : ym, width: (j - i) * dx, height: h, fill: pw > 0 ? C.good : C.info, opacity: .92 }, svg);
-    i = j;
-  }
   // 3) Wind und Sonne, ganz Deutschland: Messwert, danach Prognose (heller)
   const lt = lastTs('pv'), fcW = t => val('fcWon', t) !== null && val('fcWoff', t) !== null ? (val('fcWon', t) + val('fcWoff', t)) * 4 : null;
   const pts = slots.map(t => {
@@ -676,7 +662,7 @@ function renderDay2(results, slots) {
   const iLast = lt === null ? -1 : slots.findIndex(t => t > lt);
   if (iLast > 0 && iLast < n) { const x = X(iLast); el('line', { x1: x, x2: x, y1: Cc.y, y2: Cc.y + Cc.h, stroke: C['ink-3'], 'stroke-width': 1.2, 'stroke-dasharray': '4 5' }, svg); if (P.x + P.w - x > 100) stxt(svg, { x: x + 8, y: Cc.y + 18, 'font-size': 15, fill: C['ink-3'] }, 'Prognose ▶'); }
   // Zeitachse, 3-h-Raster und Jetzt-Linie über alle drei Teile
-  for (const t of hourTicks(t0, t1, 3)) { const x = P.x + (t.t - t0) / SLOT * dx; if (x <= P.x + 1 || x >= P.x + P.w - 1) continue; for (const [y1, y2] of [[A.y, A.y + A.h], [B.y, B.y + B.h], [Cc.y, Cc.y + Cc.h]]) el('line', { x1: x, x2: x, y1, y2, stroke: C.grid, 'stroke-width': 1, opacity: .8 }, svg); }
+  for (const t of hourTicks(t0, t1, 3)) { const x = P.x + (t.t - t0) / SLOT * dx; if (x <= P.x + 1 || x >= P.x + P.w - 1) continue; for (const [y1, y2] of [[A.y, A.y + A.h], [Cc.y, Cc.y + Cc.h]]) el('line', { x1: x, x2: x, y1, y2, stroke: C.grid, 'stroke-width': 1, opacity: .8 }, svg); }
   el('line', { x1: P.x, x2: P.x + P.w, y1: Cc.y + Cc.h, y2: Cc.y + Cc.h, stroke: C.axis, 'stroke-width': 1.5 }, svg);
   dayTimeLabels(svg, t0, t1, P.x, dx, Cc.y + Cc.h + 26);
   if (nx !== null) {
@@ -692,9 +678,6 @@ function renderDay2(results, slots) {
   const q = lt !== null ? pts[slots.indexOf(lt)] : null;
   item('', C['c-sonne'], 'Sonne', q ? fmt(q.s / 1000, 1) + ' GW' : null);
   item('', C['c-wind'], 'Wind', q ? fmt(q.w / 1000, 1) + ' GW' : null);
-  item('', C.good, 'Pumpspeicher speist ein'); item('', C.info, 'lädt');
-  const note = html('div', 'lg-note', box);
-  html('b', '', note, 'Pumpspeicher: '); note.append(r.avgCh !== null && r.avgDis !== null ? `lädt heute im Mittel bei ${fmt(r.avgCh, 0)} €/MWh und speist bei ${fmt(r.avgDis, 0)} €/MWh wieder ein – so lohnt sich der Verlust von rund einem Fünftel.` : 'heute kein lohnender Preisunterschied, er bleibt stehen.');
 }
 
 /* ---------- Gesamtaufbau ---------- */
@@ -708,7 +691,7 @@ function renderAll() {
   s1.append('Messwerte von '); html('b', '', s1, kTs === null ? '–' : fmtTime.format(kTs) + ' Uhr'); s1.append(document.createElement('br'));
   s1.append('Börsenpreis für '); html('b', '', s1, `${fmtTime.format(ns)}–${fmtTime.format(ns + SLOT)} Uhr`);
   const t0 = midnight(Date.now()), slots = slotsBetween(t0, addDays(t0, 1));
-  const results = { bat: simulate(BAT, slots), psw: simulate(PSW, slots), ely: simulateEly(ELY, slots) };
+  const results = { bat: simulate(BAT, slots), ely: simulateEly(ELY, slots) };
   renderTiles(results.bat); renderMix();
   const s2 = $('#v2Stamp'); s2.replaceChildren(); s2.append(fmtDayLong.format(Date.now())); s2.append(document.createElement('br'));
   const lpv = lastTs('pv'); s2.append('Wind und Sonne: Messwerte bis '); html('b', '', s2, lpv === null ? '–' : fmtTime.format(lpv) + ' Uhr');
