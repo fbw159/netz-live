@@ -190,12 +190,12 @@ svg .m { font-family: var(--font-mono); }
       <div class="stamp" id="v2Stamp"></div>
     </div>
     <div class="card" id="priceCard">
-      <div class="chead"><span class="eyebrow">Börsenpreis heute</span><span class="hint">Strompreis an der Börse für den Tag, € je MWh, je Viertelstunde</span></div>
+      <div class="chead"><span class="eyebrow">Börsenpreis heute</span><span class="hint">€/MWh je Viertelstunde</span></div>
       <div id="nowBody"></div>
       <svg id="priceSvg" viewBox="0 0 1200 194" role="img" aria-label="Börsenpreis heute je Viertelstunde"></svg>
     </div>
     <div class="card" id="ganttCard">
-      <div class="chead"><span class="eyebrow">Leistung über den Tag</span><span class="hint">heute 0–24 Uhr · Wind und Sonne: ganz Deutschland · Speicher und Elektrolyseur: Beispielanlagen</span>
+      <div class="chead"><span class="eyebrow">Leistung über den Tag</span><span class="hint">heute 0–24 Uhr</span>
         <div class="legend">
           <span><i style="background:var(--good)"></i>speist ein (nach oben)</span>
           <span><i style="background:var(--info)"></i>nimmt Strom auf (nach unten)</span>
@@ -204,7 +204,7 @@ svg .m { font-family: var(--font-mono); }
     </div>
     <div class="notes">
       <p><sup>1</sup> Wind und Sonne: Einspeisung in ganz Deutschland, Fläche = Anteil an der installierten Leistung, ab Datenstand Prognose der Netzbetreiber. Daten: Bundesnetzagentur | SMARD.de (CC BY 4.0).</p>
-      <p><sup>2</sup> Beispielanlagen: Batterie 10 MW / 20 MWh (Wirkungsgrad 88 %), Pumpspeicher 300 MW / 2.400 MWh (78 %), Fahrplan nach den Tagespreisen. Elektrolyseur 10 MW, 55 kWh/kg H₂, Erlös 6 €/kg (Annahme). Preisspannen und Ø: heute.</p>
+      <p><sup>2</sup> Beispielanlagen: Batterie 10 MW / 20 MWh (Wirkungsgrad 88 %), Pumpspeicher 300 MW / 2.400 MWh (78 %), Fahrplan nach den Tagespreisen. Elektrolyseur 10 MW, 55 kWh/kg H₂, Erlös 6 €/kg (Annahme). Ø = mittlerer Preis beim Laden bzw. Einspeisen heute.</p>
     </div>
   </section>
   <div class="loading" id="loading">Daten werden geladen …</div>
@@ -742,9 +742,9 @@ function renderReadout(k, genEnd) {
 // gemeinsame Zeitachse auf der Bühne (px), damit Preiskurve und Anlagenzeilen exakt untereinander liegen
 const PX0 = 700, PX1 = 1840;
 const V2_GROUPS = [
-  { id: 'ee', label: ['Wind und', 'Sonne¹'], assets: ['pvp', 'wonp', 'woffp'] },
-  { id: 'sto', label: ['Speicher²'], assets: ['bat', 'psw'] },
-  { id: 'load', label: ['Verbraucher²'], assets: ['ely'] },
+  { id: 'ee', label: ['Wind und', 'Sonne¹'], note: ['ganz Deutschland'], assets: ['pvp', 'wonp', 'woffp'] },
+  { id: 'sto', label: ['Speicher²'], note: ['Beispielanlagen'], assets: ['bat', 'psw'] },
+  { id: 'load', label: ['Verbraucher²'], note: ['Beispielanlage'], assets: ['ely'] },
 ];
 const PILL = { run: ['good', 'good-bg'], dis: ['good', 'good-bg'], charge: ['info', 'info-bg'], curt: ['warn', 'warn-bg'] };
 function pillSvg(svg, x, y, text, cls, anchor) {
@@ -829,29 +829,23 @@ function renderGantt(results, slots) {
   const COL = { grp: 18, name: 164, pill: X0 - 16 };
   const RH = 66, PAD = 6, GAP = 10, HY = 21, TOP = 34, TP = 6, TH = RH - 2 * TP;
   const head = (x, text, anchor) => stxt(svg, { x, y: HY, 'text-anchor': anchor || 'start', 'font-size': 13, 'font-weight': 700, fill: C['ink-3'], 'letter-spacing': '.9' }, text.toUpperCase());
-  head(COL.name, 'Anlage'); head(COL.pill, 'Jetzt', 'end');
   dayTimeLabels(svg, t0, t1, X0, dx, HY, nx !== null ? [nx - 34, nx + 104] : null);
   const byId = Object.fromEntries(ASSETS.map(a => [a.id, a]));
   // Wind und Sonne: Einspeisung in ganz Deutschland (Messwert, danach Prognose) als Anteil der installierten Leistung
   const EE_NAME = { pvp: 'Photovoltaik', wonp: 'Wind an Land', woffp: 'Wind auf See' };
   const EE_FC = { pv: 'fcPV', won: 'fcWon', woff: 'fcWoff' };
   const eeShare = a => slots.map(t => { const v = mw(a.src, t) ?? mw(EE_FC[a.src], t), inst = store.installed[a.src]; return v === null || !inst ? null : Math.max(0, v / inst); });
-  const range = list => list.length ? `${fmt(Math.min(...list), 0)} bis ${fmt(Math.max(...list), 0)} €/MWh, Ø ${fmt(list.reduce((s, v) => s + v, 0) / list.length, 0)}` : null;
+  const avg = list => list.length ? fmt(list.reduce((s, v) => s + v, 0) / list.length, 0) : null;
+  const nowGW = a => { const lt = lastTs(a.src), v = lt !== null ? mw(a.src, lt) : null; return v === null ? null : v / 1000; };
   const sub = (a, r) => {
-    if (a.type === 'ee') {
-      const lt = lastTs(a.src), v = lt !== null ? mw(a.src, lt) : null, inst = store.installed[a.src];
-      return [v === null ? 'noch keine Messwerte' : `${fmt(v / 1000, 1)} GW von ${fmt(inst / 1000, 0)} GW installiert`, null];
-    }
+    if (a.type === 'ee') return `von ${fmt(store.installed[a.src] / 1000, 0)} GW installiert`;
     const pr = i => val('price', slots[i]);
     if (a.type === 'sto') {
       const ch = [], dis = []; r.power.forEach((p, i) => { const q = pr(i); if (q === null || !p) return; (p < 0 ? ch : dis).push(q); });
-      return [range(ch) ? `lädt bei ${range(ch)}` : 'lädt heute nicht', range(dis) ? `speist ein bei ${range(dis)}` : 'speist heute nicht ein'];
+      return ch.length && dis.length ? `lädt Ø ${avg(ch)} · speist ein Ø ${avg(dis)} €/MWh` : 'heute kein Handel';
     }
-    if (a.type === 'ely') {
-      const run = []; r.run.forEach((on, i) => { const q = pr(i); if (on && q !== null) run.push(q); });
-      return [`läuft bis ${fmt(r.thresholds[0].v, 0)} €/MWh`, range(run) ? `heute bei ${range(run)}` : 'heute nicht, Preis immer darüber'];
-    }
-    return ['', ''];
+    if (a.type === 'ely') return `läuft bis ${fmt(r.thresholds[0].v, 0)} €/MWh`;
+    return '';
   };
   // Rechteck über zusammenhängende Viertelstunden mit gleichem Wert
   function bars(get, color, top, scale) {
@@ -890,21 +884,24 @@ function renderGantt(results, slots) {
   for (const g of V2_GROUPS) {
     const list = g.assets.map(id => byId[id]).filter(Boolean), h = list.length * RH + 2 * PAD;
     el('rect', { x: 0, y, width: W, height: h, rx: 10, fill: C['surface-2'] }, svg);
-    // bei Wind und Sonne zusätzlich der Zeitpunkt des letzten Messwerts
-    const lt = g.id === 'ee' ? lastTs('pv') : null, extra = lt !== null ? 1 : 0;
-    g.label.forEach((s, k, arr) => stxt(svg, { x: COL.grp, y: y + h / 2 + 5 + (k - (arr.length + extra - 1) / 2) * 18, 'font-size': 13.5, 'font-weight': 700, fill: C['ink-2'], 'letter-spacing': '.7' }, s.toUpperCase()));
-    if (extra) stxt(svg, { x: COL.grp, y: y + h / 2 + 5 + (g.label.length - (g.label.length + extra - 1) / 2) * 18 + 4, 'font-size': 14, fill: C['ink-3'] }, `Stand ${fmtTime.format(lt)} Uhr`);
+    // Gruppenname, darunter klein: ganz Deutschland / Beispielanlagen (bei Wind und Sonne mit Messzeitpunkt)
+    const lt = g.id === 'ee' ? lastTs('pv') : null, notes = g.note.concat(lt !== null ? [`Stand ${fmtTime.format(lt)} Uhr`] : []);
+    const lines = g.label.length + notes.length, y0 = y + h / 2 + 5 - (lines - 1) / 2 * 18 + (notes.length ? -2 : 0);
+    g.label.forEach((s, k) => stxt(svg, { x: COL.grp, y: y0 + k * 18, 'font-size': 13.5, 'font-weight': 700, fill: C['ink-2'], 'letter-spacing': '.7' }, s.toUpperCase()));
+    notes.forEach((s, k) => stxt(svg, { x: COL.grp, y: y0 + (g.label.length + k) * 18 + 4, 'font-size': 14, fill: C['ink-3'] }, s));
     let ry = y + PAD;
     for (const a of list) {
       const r = results[a.id];
-      const sl = sub(a, r), two = sl[1] !== null;
-      stxt(svg, { x: COL.name, y: ry + (two ? 22 : 28), 'font-size': 19, fill: C.ink }, EE_NAME[a.id] || (a.id === 'psw' ? 'Pumpspeicherwerk' : a.name));
-      stxt(svg, { x: COL.name, y: ry + (two ? 41 : 49), 'font-size': 15, fill: C['ink-2'] }, sl[0]);
-      if (two) stxt(svg, { x: COL.name, y: ry + 59, 'font-size': 15, fill: C['ink-2'] }, sl[1]);
-      let pill = [r.now.text, r.now.cls];
-      if (a.type === 'ely' && r.now.cls === 'run') pill = ['läuft', 'charge'];
-      if (a.type === 'ee') { const lt = lastTs(a.src), v = lt !== null ? mw(a.src, lt) : null; pill = v === null ? ['keine Daten', 'na'] : v / store.installed[a.src] > 0.005 ? ['speist ein', 'run'] : ['steht', 'idle']; }
-      pillSvg(svg, COL.pill, ry + (RH - 24) / 2, pill[0], pill[1], 'end');
+      stxt(svg, { x: COL.name, y: ry + 29, 'font-size': 21, fill: C.ink }, EE_NAME[a.id] || (a.id === 'psw' ? 'Pumpspeicherwerk' : a.name));
+      stxt(svg, { x: COL.name, y: ry + 52, 'font-size': 16, fill: C['ink-2'] }, sub(a, r));
+      if (a.type === 'ee') {
+        // aktuelle Leistung groß in der Jetzt-Spalte
+        const v = nowGW(a);
+        stxt(svg, { x: COL.pill, y: ry + RH / 2 + 9, 'text-anchor': 'end', 'font-size': 26, 'font-weight': 700, fill: C.ink }, v === null ? '–' : `${fmt(v, 1)} GW`);
+      } else {
+        const pill = a.type === 'ely' && r.now.cls === 'run' ? ['läuft', 'charge'] : [r.now.text, r.now.cls];
+        pillSvg(svg, COL.pill, ry + (RH - 24) / 2, pill[0], pill[1], 'end');
+      }
       const ty = ry + TP, yb = ty + TH, ym = ty + TH / 2;
       el('rect', { x: X0, y: ty, width: X1 - X0, height: TH, rx: 5, fill: C.stage }, svg);
       for (const t of hourTicks(t0, t1, 3)) { const x = X0 + (t.t - t0) / SLOT * dx; if (x <= X0 + 1 || x >= X1 - 1) continue; el('line', { x1: x, x2: x, y1: ty, y2: yb, stroke: C.grid, 'stroke-width': 1.5 }, svg); }
