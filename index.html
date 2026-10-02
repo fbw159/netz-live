@@ -81,8 +81,8 @@ svg text { font-family: var(--font-ui); }
 svg .m { font-family: var(--font-mono); }
 
 /* Ansicht 1: drei große Kacheln links (Verbrauch, Erneuerbare, Speicher) */
-.tiles { position: absolute; left: 48px; top: 140px; width: 760px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
-.tile { height: 260px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px 24px 16px; display: grid; grid-template-columns: minmax(0, 1fr) 236px; grid-template-rows: auto 1fr auto; column-gap: 14px; min-width: 0; }
+.tiles { position: absolute; left: 48px; top: 140px; width: 760px; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 300px 300px 180px; gap: 16px; }
+.tile { height: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px 24px 16px; display: grid; grid-template-columns: minmax(0, 1fr) 236px; grid-template-rows: auto 1fr auto; column-gap: 14px; min-width: 0; }
 .tile .label { grid-column: 1 / -1; font-size: 22px; color: var(--ink-2); display: flex; align-items: center; gap: 10px; white-space: nowrap; }
 .tile .label i { width: 14px; height: 14px; border-radius: 3px; flex: none; }
 .tile .label .pill { margin-left: auto; }
@@ -96,11 +96,8 @@ svg .m { font-family: var(--font-mono); }
 .tile svg.spark { grid-column: 2; grid-row: 2; align-self: center; width: 236px; height: 84px; }
 .tile .sub { grid-column: 1 / -1; font-size: 19px; color: var(--ink-2); line-height: 1.32; align-self: end; }
 .tile .sub b { color: var(--ink); font-weight: 600; font-family: var(--font-mono); }
-.tile.sto { grid-template-rows: auto 1fr auto auto; }
-.tile.sto .sub { grid-row: 3; align-self: start; margin-top: 2px; white-space: nowrap; }
-.tile.sto svg.strip { grid-column: 1 / -1; grid-row: 4; align-self: end; width: 712px; height: 58px; }
-.tile.sto .side { grid-column: 2; grid-row: 2; align-self: center; font-size: 19px; color: var(--ink-2); line-height: 1.4; text-align: right; white-space: nowrap; }
-.tile.sto .side b { color: var(--ink); font-family: var(--font-mono); font-weight: 600; font-size: 24px; }
+.tile.sto { grid-template-rows: auto 1fr; }
+.tile.sto .value { grid-column: 1 / -1; }
 .pill { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; padding: 3px 11px; border-radius: 999px; background: var(--surface-3); color: var(--ink-2); white-space: nowrap; }
 .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .pill.run, .pill.dis { background: var(--good-bg); color: var(--good); }
@@ -122,33 +119,26 @@ svg .m { font-family: var(--font-mono); }
 .lg-note { margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 15.5px; color: var(--ink-3); line-height: 1.38; }
 .lg-note b { color: var(--ink-2); font-weight: 600; }
 
-/* Ansicht 2: Was hätte Strom ohne Erneuerbare gekostet? Oben Ergebnis mit Rechenweg, Mitte drei Kennzahlen, unten Monatsvergleich. */
-.ktiles { position: absolute; left: 48px; right: 48px; top: 406px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-.ktile { height: 164px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px 22px 14px; display: flex; flex-direction: column; min-width: 0; }
-.ktile .label { font-size: 20px; color: var(--ink-2); white-space: nowrap; }
-.ktile .value { font-size: 56px; font-weight: 600; line-height: 1.1; letter-spacing: -.02em; white-space: nowrap; margin-top: 4px; }
-.ktile .value small { font-size: 24px; font-weight: 500; color: var(--ink-2); margin-left: 8px; letter-spacing: 0; }
-.ktile .value .arrow { color: var(--ink-3); font-weight: 400; margin: 0 10px; }
-.ktile .sub { margin-top: auto; font-size: 17px; color: var(--ink-2); line-height: 1.3; }
-.ktile .sub b { color: var(--ink); font-weight: 600; font-family: var(--font-mono); }
-#hero { left: 48px; right: 48px; top: 140px; height: 250px; padding: 16px 26px 14px; display: grid; grid-template-columns: 850px minmax(0, 1fr); column-gap: 30px; }
-#hero .label { font-size: 22px; color: var(--ink-2); white-space: nowrap; }
-#hero .value { font-size: 88px; font-weight: 600; line-height: 1; letter-spacing: -.03em; white-space: nowrap; margin-top: 10px; display: flex; align-items: baseline; gap: 18px; }
-#hero .value small { font-size: 30px; font-weight: 500; color: var(--ink-2); letter-spacing: 0; }
-#hero .value .pill { font-size: 20px; padding: 7px 16px; align-self: center; }
-#hero .sub { margin-top: 12px; font-size: 19px; color: var(--ink-2); line-height: 1.38; }
+/* Ansicht 2: Was hätte Strom ohne Erneuerbare gekostet? Eine Ergebniskachel, darunter drei Posten, unten Annahmen. */
+#hero { left: 48px; right: 48px; top: 140px; height: 300px; padding: 26px 40px 24px; display: flex; flex-direction: column; justify-content: space-between; }
+#hero .label { font-size: 28px; color: var(--ink-2); white-space: nowrap; }
+#hero .value { font-size: 150px; font-weight: 600; line-height: 1; letter-spacing: -.035em; white-space: nowrap; display: flex; align-items: baseline; gap: 26px; }
+#hero .value small { font-size: 44px; font-weight: 500; color: var(--ink-2); letter-spacing: 0; }
+#hero .value .pill { font-size: 26px; padding: 10px 22px; align-self: center; margin-left: 10px; }
+#hero .sub { font-size: 26px; color: var(--ink-2); line-height: 1.35; white-space: nowrap; }
 #hero .sub b { color: var(--ink); font-weight: 600; font-family: var(--font-mono); }
-#hero svg { width: 100%; height: 100%; }
-#hero .calc { position: relative; }
-#hero .calc h3 { position: absolute; left: 0; top: 0; margin: 0; font-size: 15px; font-weight: 700; color: var(--ink-3); letter-spacing: .08em; text-transform: uppercase; }
-#cfCard { left: 48px; right: 48px; top: 586px; height: 310px; padding: 16px 22px 8px; }
-#cfCard .legend { position: absolute; right: 22px; top: 18px; display: flex; gap: 26px; font-size: 17px; color: var(--ink-2); }
-#cfCard .legend span { display: inline-flex; align-items: center; gap: 9px; }
-#cfCard .legend i { display: inline-block; width: 22px; height: 14px; border-radius: 3px; }
-#cfSvg { position: absolute; left: 14px; top: 50px; width: 1796px; height: 250px; }
+.ktiles { position: absolute; left: 48px; right: 48px; top: 456px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.ktile { height: 330px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px 28px 20px; display: flex; flex-direction: column; min-width: 0; }
+.ktile .label { font-size: 24px; color: var(--ink-2); line-height: 1.3; }
+.ktile .value { font-size: 80px; font-weight: 600; line-height: 1.05; letter-spacing: -.025em; white-space: nowrap; margin: auto 0; }
+.ktile .value small { font-size: 30px; font-weight: 500; color: var(--ink-2); margin-left: 10px; letter-spacing: 0; }
+.ktile .value.up { color: var(--warn); }
+.ktile .value.down { color: var(--info); }
+.ktile .sub { font-size: 21px; color: var(--ink-2); line-height: 1.35; }
+.ktile .sub b { color: var(--ink); font-weight: 600; font-family: var(--font-mono); }
 .cf-wait { position: absolute; left: 0; right: 0; top: 46%; text-align: center; font-size: 26px; color: var(--ink-2); }
 .cf-wait small { display: block; margin-top: 10px; font-size: 18px; color: var(--ink-3); }
-.notes { position: absolute; left: 48px; right: 48px; bottom: 8px; font-size: 13.5px; color: var(--ink-3); line-height: 1.4; }
+.notes { position: absolute; left: 48px; right: 48px; bottom: 16px; font-size: 15px; color: var(--ink-3); line-height: 1.42; }
 .notes p { margin: 0; }
 .notes b { color: var(--ink-2); font-weight: 600; }
 .loading { position: absolute; left: 0; right: 0; top: 45%; text-align: center; font-size: 28px; color: var(--ink-2); }
@@ -197,25 +187,17 @@ svg .m { font-family: var(--font-mono); }
     <div class="vhead">
       <div>
         <h1>Was hätte Strom ohne Erneuerbare gekostet?</h1>
-        <p id="v2Sub">Letzte 12 Monate, Stunde für Stunde nachgerechnet: Erneuerbare ersetzt durch Kohle- und Gaskraftwerke, alles andere wie gehabt.</p>
+        <p id="v2Sub">Letzte 12 Monate, Stunde für Stunde nachgerechnet: Erneuerbare ersetzt durch Kohle- und Gaskraftwerke.</p>
       </div>
       <div class="stamp" id="v2Stamp"></div>
     </div>
     <div id="cfBody" hidden>
       <div class="card" id="hero">
-        <div>
-          <div class="label">Strompreis für Haushalte ohne Erneuerbare</div>
-          <div class="value" id="heroValue"></div>
-          <div class="sub" id="heroSub"></div>
-        </div>
-        <div class="calc"><h3>So kommt die Zahl zustande · ct/kWh</h3><svg id="calcSvg" viewBox="0 0 900 228" role="img" aria-label="Rechenweg vom Börsenpreis zum Haushaltspreis"></svg></div>
+        <div class="label">Strom für Haushalte ohne Erneuerbare</div>
+        <div class="value" id="heroValue"></div>
+        <div class="sub" id="heroSub"></div>
       </div>
       <div class="ktiles" id="ktiles"></div>
-      <div class="card" id="cfCard">
-        <h2>Börsenpreis je Monat <span>€/MWh, verbrauchsgewichtet</span></h2>
-        <div class="legend"><span><i id="lgReal"></i>mit Erneuerbaren (tatsächlich)</span><span><i id="lgCf"></i>ohne Erneuerbare (Rechnung)</span></div>
-        <svg id="cfSvg" viewBox="0 0 1796 250" role="img" aria-label="Börsenpreis je Monat, tatsächlich und ohne Erneuerbare"></svg>
-      </div>
       <div class="notes" id="cfNotes"></div>
     </div>
     <div class="cf-wait" id="cfWait">Rechnung läuft, Stundendaten der letzten 12 Monate werden geladen …<small id="cfProgress"></small></div>
@@ -463,29 +445,7 @@ function sparkline(values, color) {
   el('circle', { cx: X(last), cy: Y(values[last]), r: 4.5, fill: color }, svg);
   return svg;
 }
-/* Tagesstreifen des Speichers: Ladeblöcke blau, Entladeblöcke grün, Ladestand als Linie, Jetzt-Marke */
-function storageStrip(r, slots) {
-  const W = 712, H = 58, n = slots.length, X0 = 36, X1 = W - 4, dx = (X1 - X0) / n, TY = 6, TH = 36, yb = TY + TH;
-  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, class: 'strip', 'aria-hidden': 'true' });
-  el('rect', { x: X0, y: TY, width: X1 - X0, height: TH, rx: 5, fill: C.stage }, svg);
-  for (let h = 6; h < 24; h += 6) { const x = X0 + h * 4 * dx; el('line', { x1: x, x2: x, y1: TY, y2: yb, stroke: C.grid, 'stroke-width': 1.5 }, svg); }
-  let i = 0;
-  while (i < n) {
-    const pw = r.known[i] ? r.power[i] : 0; if (!pw) { i++; continue; }
-    let j = i + 1; while (j < n && r.known[j] && Math.abs((r.power[j] || 0) - pw) < 1e-6) j++;
-    el('rect', { x: X0 + i * dx, y: TY + 1, width: (j - i) * dx, height: TH - 2, fill: pw < 0 ? C.info : C.good, opacity: .85 }, svg);
-    i = j;
-  }
-  let d = ''; for (let k = 0; k < n; k++) { if (r.soc[k] === null) continue; const x = X0 + (k + 1) * dx, y = yb - 2 - r.soc[k] * (TH - 4); d += (d ? 'L' : `M${(X0 + k * dx).toFixed(1)},${(yb - 2).toFixed(1)}L`) + x.toFixed(1) + ',' + y.toFixed(1); }
-  if (d) el('path', { d, fill: 'none', stroke: C.ink, 'stroke-width': 2, 'stroke-linejoin': 'round', opacity: .9 }, svg);
-  for (const h of [0, 6, 12, 18, 24]) stxt(svg, { x: X0 + h * 4 * dx, y: H - 1, 'text-anchor': h === 0 ? 'start' : h === 24 ? 'end' : 'middle', 'font-size': 13, fill: C['ink-3'], class: 'm' }, h === 24 ? '24 Uhr' : String(h).padStart(2, '0'));
-  stxt(svg, { x: X0 - 6, y: TY + 12, 'text-anchor': 'end', 'font-size': 11.5, fill: C['ink-3'] }, '100 %');
-  stxt(svg, { x: X0 - 6, y: yb - 1, 'text-anchor': 'end', 'font-size': 11.5, fill: C['ink-3'] }, '0 %');
-  const ns = nowSlot(), k = slots.indexOf(ns);
-  if (k >= 0) { const x = X0 + (k + 0.5) * dx; el('line', { x1: x, x2: x, y1: TY - 4, y2: yb + 3, stroke: C.ink, 'stroke-width': 2.5 }, svg); }
-  return svg;
-}
-function renderTiles(bat, slots) {
+function renderTiles(bat) {
   const box = $('#tiles'); box.replaceChildren();
   const kTs = kpiTs(), k = kTs !== null ? derive(kTs) : null;
   const { start } = windowBounds();
@@ -497,8 +457,7 @@ function renderTiles(bat, slots) {
     const v = html('div', 'value' + (o.vcls ? ' ' + o.vcls : ''), t, o.value); if (o.unit) html('small', '', v, o.unit);
     if (o.spark) t.appendChild(sparkline(o.spark, o.color || C['ink-2']));
     if (o.side) { const sd = html('div', 'side', t); for (const part of o.side) { if (Array.isArray(part)) html('b', '', sd, part[0]); else if (part === '\n') sd.appendChild(document.createElement('br')); else sd.append(part); } }
-    const s = html('div', 'sub', t); for (const part of o.sub) { if (Array.isArray(part)) html('b', '', s, part[0]); else if (part === '\n') s.appendChild(document.createElement('br')); else s.append(part); }
-    if (o.strip) t.appendChild(o.strip);
+    if (o.sub) { const s = html('div', 'sub', t); for (const part of o.sub) { if (Array.isArray(part)) html('b', '', s, part[0]); else if (part === '\n') s.appendChild(document.createElement('br')); else s.append(part); } }
   }
   const f1 = x => x === null ? '–' : fmt(x, 1);
   const sp = f => past.map(f);
@@ -507,13 +466,9 @@ function renderTiles(bat, slots) {
   const bioHydro = d => d.g.bio !== null && d.g.hydro !== null ? gw(d.g.bio + d.g.hydro) : null;
   tile({ label: 'Erneuerbare Energien', color: C.good, value: k ? fmt(ee(k), 0) : '–', unit: '%', spark: sp(ee),
     sub: k ? ['Anteil an der Stromerzeugung in Deutschland', '\n', 'Wind ', [f1(gw(k.g.won + k.g.woff))], ' · Sonne ', [f1(gw(k.g.pv))], ' · Biomasse & Wasser ', [f1(bioHydro(k))], ' GW'] : ['–'] });
-  const nw = bat.now, pNow = nw.price;
-  const sub = nw.cls === 'na' ? ['Für diese Viertelstunde liegt noch kein Börsenpreis vor']
-    : bat.eCh > 0 ? ['Fahrplan heute: laden Ø ', [fmt(bat.avgCh, 0)], ' · entladen Ø ', [fmt(bat.avgDis, 0)], ' €/MWh · Preis jetzt ', [fmt(pNow, 1)], ' €/MWh']
-    : ['Heute kein Handel, Preisspanne zu klein · Preis jetzt ', [fmt(pNow, 1)], ' €/MWh'];
-  tile({ label: 'Batteriespeicher · Beispiel 10 MW / 20 MWh', cls: 'sto', value: nw.text, vcls: 'word ' + nw.cls, sub,
-    side: nw.cls === 'na' ? [] : [nw.cls === 'idle' ? 'Ladestand' : nw.cls === 'charge' ? 'lädt mit' : 'entlädt mit', '\n', [nw.cls === 'idle' ? fmt(nw.soc * 100, 0) + ' %' : fmt(Math.abs(nw.mw), 0) + ' MW'], nw.cls === 'idle' ? '' : ' · Ladestand ' + fmt(nw.soc * 100, 0) + ' %'],
-    strip: storageStrip(bat, slots) });
+  // Speicher: nur der Zustand der aktuellen Viertelstunde (Fahrplan der Beispiel-Batterie gegen die Tagespreise)
+  const nw = bat.now, word = { charge: 'laden', dis: 'entladen', idle: 'standby', na: '–' }[nw.cls];
+  tile({ label: 'Speicher', cls: 'sto', value: word, vcls: 'word ' + nw.cls, sub: null });
 }
 
 /* ---------- Ansicht 1: Diagramm (rechts, volle Höhe) ---------- */
@@ -643,7 +598,7 @@ const CF = {
   eeg: 16.2e9,            // €/a  EEG-Förderung netto: 2025 Ist 18,5 Mrd. € Auszahlungen minus 2,25 Mrd. € Vermarktungserlöse (EEG-Konto), Prognose 2026 16,15 Mrd. € (ÜNB, Okt. 2025)
   congestion: 3.07e9,     // €/a  Netzengpassmanagement 2025: Redispatch 1,18, EE-Entschädigung 0,43, Netzreserve 1,36, Countertrading 0,10 Mrd. € (BNetzA, März 2026)
   offshore: 0.941,        // ct/kWh Offshore-Netzumlage 2026 (ÜNB, Okt. 2025)
-  gridExp: [1.0, 2.0],    // ct/kWh netto, Spanne für den EE-bedingten Netzausbau in den Netzentgelten (grobe Schätzung, gerechnet wird die Mitte)
+  gridExp: [1.0, 3.0],    // ct/kWh netto, Spanne für den EE-bedingten Netzausbau in den Netzentgelten (Schätzung, gerechnet wird die Mitte; Netzentgelte für Haushalte stiegen 2015→2025 von rund 6 auf 11 ct/kWh, vzbv)
   vat: 0.19,
   household: 3500,        // kWh/a
   gud: { fuel: 'gas', ef: 0.202, p: { eta: 58, vom: 3 } },  // neue GuD-Kraftwerke
@@ -747,80 +702,30 @@ function renderCf() {
   wait.hidden = true; body.hidden = false;
   st.append('Zeitraum '); html('b', '', st, `${fmtMonth.format(r.start)} bis ${fmtMonth.format(r.end - DAY)}`); st.append(document.createElement('br'));
   st.append(`${fmt(r.hours, 0)} Stunden${r.missing ? `, ${fmt(r.missing, 0)} ohne Daten` : ''} · gerechnet ${fmtTime.format(cf.at)} Uhr`);
-  const eur = x => x * CF.household / 100, teurer = r.net >= 0;
+  const eur = x => x * CF.household / 100, teurer = r.net >= 0, v = 1 + CF.vat;
+  // Ergebnis: Betrag groß, Richtung als Wort
   const hv = $('#heroValue'); hv.replaceChildren();
-  hv.append(fmtSigned(r.net, 1)); html('small', '', hv, 'ct/kWh'); html('span', 'pill ' + (teurer ? 'curt' : 'charge'), hv, teurer ? 'teurer ohne Erneuerbare' : 'billiger ohne Erneuerbare');
+  hv.append(fmt(Math.abs(r.net), 1)); html('small', '', hv, 'ct/kWh'); html('span', 'pill ' + (teurer ? 'curt' : 'charge'), hv, teurer ? 'teurer' : 'billiger');
   const hs = $('#heroSub'); hs.replaceChildren();
-  hs.append(`Haushalt mit ${fmt(CF.household, 0)} kWh im Jahr: `); html('b', '', hs, `${fmtSigned(eur(r.net), 0)} €`);
-  hs.append(` im Jahr (${fmtSigned(eur(r.netLo), 0)} bis ${fmtSigned(eur(r.netHi), 0)} € je nach Netzausbau-Annahme), mit Mehrwertsteuer.`);
-  hs.append(document.createElement('br')); hs.append('Die EEG-Förderung zahlt der Haushalt heute als Steuerzahler, nicht über die Stromrechnung.');
-  renderCalc(r);
+  const sameSign = (r.netLo >= 0) === (r.netHi >= 0);
+  const span = sameSign ? `${fmt(Math.abs(eur(r.netLo)), 0)} bis ${fmt(Math.abs(eur(r.netHi)), 0)} €` : `zwischen ${fmt(Math.abs(eur(r.netHi)), 0)} € mehr und ${fmt(Math.abs(eur(r.netLo)), 0)} € weniger`;
+  hs.append(`Das sind rund `); html('b', '', hs, `${fmt(Math.abs(eur(r.net)), 0)} €`); hs.append(` im Jahr ${teurer ? 'mehr' : 'weniger'} bei ${fmt(CF.household, 0)} kWh (je nach Netzausbau-Annahme ${span}), inklusive Mehrwertsteuer.`);
+  // Drei Posten, alle mit MwSt, so dass sie sich zum Ergebnis addieren (EEG-Förderung ohne MwSt, sie kommt aus dem Bundeshaushalt)
   const box = $('#ktiles'); box.replaceChildren();
-  function ktile(label, value, unit, sub) {
+  function ktile(label, value, cls, sub) {
     const t = html('div', 'ktile', box); html('div', 'label', t, label);
-    const v = html('div', 'value', t); for (const part of value) { if (Array.isArray(part)) html('span', part[1], v, part[0]); else v.append(part); } if (unit) html('small', '', v, unit);
-    const s = html('div', 'sub', t); for (const part of sub) { if (Array.isArray(part)) html('b', '', s, part[0]); else s.append(part); }
+    const vv = html('div', 'value ' + cls, t, value); html('small', '', vv, 'ct/kWh');
+    const sd = html('div', 'sub', t); for (const part of sub) { if (Array.isArray(part)) html('b', '', sd, part[0]); else sd.append(part); }
   }
-  ktile('Börsenpreis im Mittel, tatsächlich → ohne Erneuerbare', [fmt(r.pReal, 0), ['→', 'arrow'], fmt(r.pCf, 0)], '€/MWh', ['verbrauchsgewichtet · Unterschied ', [fmtSigned(r.pCf - r.pReal, 0) + ' €/MWh'], ' = ', [fmtSigned(r.dB, 1) + ' ct/kWh']]);
-  ktile('Erneuerbare lieferten', [fmt(r.EE / 1e6, 0)], 'TWh', [[fmt(r.EE / (r.EE + r.CONV) * 100, 0) + ' %'], ' der Stromerzeugung: Wind, Sonne, Biomasse, Wasserkraft']);
-  ktile('Ersatz bräuchte zusätzlich', [fmt(r.gNew / 1000, 0)], 'GW Gaskraftwerke', ['für die Spitze · dazu mindestens ', [fmt(r.co2 / 1e6, 0) + ' Mio. t CO₂'], ' und ', [fmt(r.gasTh / 1e6, 0) + ' TWh Erdgas'], ' mehr im Jahr']);
-  renderCfChart(r);
+  const grid = (r.offshore + r.cong + r.gridMid) * v, drop = grid + r.eeg;
+  ktile(r.dB >= 0 ? 'Börsenstrom wird teurer' : 'Börsenstrom wird billiger', fmtSigned(r.dB * v, 1), r.dB >= 0 ? 'up' : 'down', ['Börsenpreis im Mittel ', [fmt(r.pReal, 0)], ' → ', [fmt(r.pCf, 0) + ' €/MWh'], ', weil Gaskraftwerke liefern, was Wind, Sonne, Biomasse und Wasser erzeugt haben']);
+  ktile('Neue Gaskraftwerke müssen bezahlt werden', fmtSigned(r.gudFix * v, 1), 'up', [[fmt(r.gNew / 1000, 0) + ' GW'], ' zusätzlich für die Spitzenlast, Bau und Betrieb umgelegt auf jede Kilowattstunde']);
+  ktile('Förderung und Netzkosten fallen weg', fmtSigned(-drop, 1), 'down', ['EEG-Förderung ', [fmt(r.eeg, 1)], ' · Offshore-Umlage, Redispatch und Netzausbau ', [fmt(grid, 1)], ' (Netzausbau als Spanne)']);
   const notes = $('#cfNotes'); notes.replaceChildren();
   const p1 = html('p', '', notes); html('b', '', p1, 'Rechnung: ');
-  p1.append(`Stundenwerte von SMARD (Bundesnetzagentur, CC BY 4.0). Preis ohne Erneuerbare aus der Angebotskurve des heutigen Kohle- und Gasparks (tatsächlicher Börsenpreis über der konventionellen Erzeugung, aus denselben 12 Monaten; trifft den realen Mittelwert auf ${fmtSigned(r.pFit - r.pReal, 1)} €/MWh) plus ${fmt(r.gNew / 1000, 0)} GW neue GuD-Kraftwerke mit Grenzkosten ${fmt(r.mc, 0)} €/MWh (Erdgas ${fmt(G.gas, 0)} €/MWh, CO₂ ${fmt(G.co2, 0)} €/t, Wirkungsgrad ${CF.gud.p.eta} %) und Fixkosten ${fmt(CF.gudFixed, 0)} €/kW/a (= ${fmt(r.gudFix, 2)} ct/kWh). Import, Export, Pumpspeicher, Brennstoff- und CO₂-Preise wie real; bei so viel Mehrbedarf würden Gas und CO₂ eher teurer, der Preis ohne Erneuerbare ist also eine Untergrenze.`);
-  const p2 = html('p', '', notes); html('b', '', p2, 'Wegfallende Kosten je kWh Netzlast: ');
-  p2.append(`EEG-Förderung ${fmt(CF.eeg / 1e9, 1)} Mrd. €/a (EEG-Konto 2025, ÜNB-Prognose 2026) = ${fmt(r.eeg, 2)} ct, Netzengpassmanagement ${fmt(CF.congestion / 1e9, 2)} Mrd. €/a (BNetzA, 2025) = ${fmt(r.cong, 2)} ct, Offshore-Netzumlage ${fmt(CF.offshore, 3)} ct (2026), Netzausbau für Erneuerbare ${fmt(CF.gridExp[0], 1)} bis ${fmt(CF.gridExp[1], 1)} ct (Schätzung). Börsenpreis 1:1 in der Beschaffung, Rechnungsposten mit ${CF.vat * 100} % MwSt, Förderung aus dem Bundeshaushalt ohne.`);
-}
-/* Rechenweg als Wasserfall: vom Börsenpreis-Effekt über die wegfallenden Posten zur Haushaltsdifferenz (ct/kWh) */
-function renderCalc(r) {
-  const svg = $('#calcSvg'); svg.replaceChildren();
-  const W = 900, H = 228, P = { x: 44, y: 30, w: W - 44 - 10, h: 140 };
-  const steps = [
-    { l: ['Börsenpreis'], v: r.dB },
-    { l: ['Bau neuer', 'Gaskraftwerke'], v: r.gudFix },
-    { l: ['EEG-Förderung'], v: -r.eeg },
-    { l: ['Offshore-Umlage', '+ Redispatch'], v: -(r.offshore + r.cong) },
-    { l: ['Netzausbau', 'Erneuerbare'], v: -r.gridMid, range: [-CF.gridExp[1], -CF.gridExp[0]] },
-    { l: ['Mehrwertsteuer'], v: r.vat },
-    { l: ['Ergebnis', 'Haushalt'], v: r.net, total: true, range: [r.netLo, r.netHi] },
-  ];
-  let run = 0, lo = 0, hi = 0; const bars = [];
-  for (const s of steps) { const from = s.total ? 0 : run, to = s.total ? s.v : run + s.v; bars.push({ ...s, from, to }); if (!s.total) run = to; lo = Math.min(lo, from, to, ...(s.range ? (s.total ? s.range : [from + s.range[0], from + s.range[1]]) : [])); hi = Math.max(hi, from, to, ...(s.range ? (s.total ? s.range : [from + s.range[0], from + s.range[1]]) : [])); }
-  const tk = ticks(lo, hi, 4), yb = tk.values[0], yt = tk.values[tk.values.length - 1];
-  const Y = v => P.y + P.h - (v - yb) / (yt - yb) * P.h;
-  for (const v of tk.values) { el('line', { x1: P.x, x2: P.x + P.w, y1: Y(v), y2: Y(v), stroke: v === 0 ? C.axis : C.grid, 'stroke-width': v === 0 ? 1.5 : 1 }, svg); stxt(svg, { x: P.x - 8, y: Y(v) + 5, 'text-anchor': 'end', 'font-size': 13, fill: C['ink-3'], class: 'm' }, fmt(v, tk.step >= 1 ? 0 : 1)); }
-  const n = bars.length, slot = P.w / n, bw = 68;
-  bars.forEach((b, i) => {
-    const cx = P.x + slot * (i + 0.5), x = cx - bw / 2, y0 = Y(Math.max(b.from, b.to)), y1 = Y(Math.min(b.from, b.to));
-    const up = b.to >= b.from, col = b.total ? C['ink-2'] : up ? C.warn : C.info;
-    el('rect', { x, y: y0, width: bw, height: Math.max(2, y1 - y0), rx: 3, fill: col, opacity: b.total ? .95 : .85 }, svg);
-    if (b.range) { const a = b.total ? b.range[0] : b.from + b.range[0], c = b.total ? b.range[1] : b.from + b.range[1]; el('line', { x1: cx + bw / 2 + 8, x2: cx + bw / 2 + 8, y1: Y(a), y2: Y(c), stroke: C.ink, 'stroke-width': 2 }, svg); for (const v of [a, c]) el('line', { x1: cx + bw / 2 + 3, x2: cx + bw / 2 + 13, y1: Y(v), y2: Y(v), stroke: C.ink, 'stroke-width': 2 }, svg); }
-    if (i < n - 1 && !b.total) el('line', { x1: x + bw, x2: cx + slot - bw / 2, y1: Y(b.to), y2: Y(b.to), stroke: C['ink-3'], 'stroke-width': 1, 'stroke-dasharray': '3 3' }, svg);
-    const vy = up ? y0 - 7 : y1 + 17;
-    const lv = b.total ? b.to : b.v;
-    stxt(svg, { x: cx, y: vy, 'text-anchor': 'middle', 'font-size': b.total ? 18 : 16, 'font-weight': 700, fill: C.ink, class: 'm' }, Math.abs(lv) < 0.05 ? '±0,0' : fmtSigned(lv, 1));
-    b.l.forEach((t, k) => stxt(svg, { x: cx, y: P.y + P.h + 20 + k * 17, 'text-anchor': 'middle', 'font-size': 14, fill: b.total ? C.ink : C['ink-2'], 'font-weight': b.total ? 600 : 400 }, t));
-  });
-}
-/* Monatsvergleich: tatsächlicher Börsenpreis und Preis ohne Erneuerbare, je verbrauchsgewichtet */
-function renderCfChart(r) {
-  const svg = $('#cfSvg'); svg.replaceChildren();
-  $('#lgReal').style.background = C.good; $('#lgCf').style.background = C['c-gas'];
-  const W = 1796, H = 250, P = { x: 52, y: 26, w: W - 52 - 12, h: H - 26 - 34 };
-  const ms = r.months, n = ms.length;
-  const vals = ms.flatMap(m => [m.PL / m.L, m.CL / m.L]);
-  const tk = ticks(Math.min(0, ...vals), Math.max(...vals) * 1.12, 4), yb = tk.values[0], yt = tk.values[tk.values.length - 1];
-  const Y = v => P.y + P.h - (v - yb) / (yt - yb) * P.h;
-  for (const v of tk.values) { el('line', { x1: P.x, x2: P.x + P.w, y1: Y(v), y2: Y(v), stroke: v === 0 ? C.axis : C.grid, 'stroke-width': v === 0 ? 1.5 : 1 }, svg); stxt(svg, { x: P.x - 8, y: Y(v) + 5, 'text-anchor': 'end', 'font-size': 14, fill: C['ink-3'], class: 'm' }, fmt(v, 0)); }
-  stxt(svg, { x: P.x - 8, y: P.y - 9, 'text-anchor': 'end', 'font-size': 14, fill: C['ink-3'], class: 'm' }, '€/MWh');
-  const slot = P.w / n, bw = Math.min(58, slot * 0.34), gap = 4;
-  ms.forEach((m, i) => {
-    const cx = P.x + slot * (i + 0.5), a = m.PL / m.L, b = m.CL / m.L;
-    const bar = (x, v, col) => { const y0 = Y(Math.max(0, v)), y1 = Y(Math.min(0, v)); el('rect', { x, y: y0, width: bw, height: Math.max(2, y1 - y0), rx: 3, fill: col, opacity: .9 }, svg); stxt(svg, { x: x + bw / 2, y: (v >= 0 ? y0 - 6 : y1 + 15), 'text-anchor': 'middle', 'font-size': 14.5, 'font-weight': 600, fill: C.ink, class: 'm' }, fmt(v, 0)); };
-    bar(cx - bw - gap / 2, a, C.good); bar(cx + gap / 2, b, C['c-gas']);
-    const p = tzParts(m.t);
-    stxt(svg, { x: cx, y: P.y + P.h + 22, 'text-anchor': 'middle', 'font-size': 15, fill: C['ink-2'], 'font-weight': 500 }, fmtMonthS.format(m.t).replace('.', '') + (p.m === 1 || i === 0 ? ' ' + fmtYear.format(m.t) : ''));
-  });
+  p1.append(`Stundenwerte von SMARD (Bundesnetzagentur, CC BY 4.0), letzte 12 volle Monate. Wind, Sonne, Biomasse und Wasserkraft (${fmt(r.EE / 1e6, 0)} TWh, ${fmt(r.EE / (r.EE + r.CONV) * 100, 0)} % der Erzeugung) werden durch Kohle- und Gaskraftwerke ersetzt. Preis je Stunde aus der Angebotskurve des heutigen Parks (Börsenpreis über konventioneller Erzeugung, trifft den realen Mittelwert auf ${fmtSigned(r.pFit - r.pReal, 1)} €/MWh) plus ${fmt(r.gNew / 1000, 0)} GW neue GuD-Kraftwerke mit Grenzkosten ${fmt(r.mc, 0)} €/MWh (Erdgas ${fmt(G.gas, 0)} €/MWh, CO₂ ${fmt(G.co2, 0)} €/t) und Fixkosten ${fmt(CF.gudFixed, 0)} €/kW/a. Gas- und CO₂-Preis unverändert, Import/Export wie real.`);
+  const p2 = html('p', '', notes); html('b', '', p2, 'Wegfallend: ');
+  p2.append(`EEG-Förderung ${fmt(CF.eeg / 1e9, 1)} Mrd. €/a (EEG-Konto 2025, ÜNB-Prognose 2026), Netzengpassmanagement ${fmt(CF.congestion / 1e9, 2)} Mrd. €/a (BNetzA, 2025), Offshore-Netzumlage ${fmt(CF.offshore, 3)} ct/kWh (2026), Netzausbau für Erneuerbare ${fmt(CF.gridExp[0], 0)} bis ${fmt(CF.gridExp[1], 0)} ct/kWh (Schätzung). Umgelegt auf die Netzlast des Zeitraums (${fmt(r.L / 1e6, 0)} TWh). Haushalt ${fmt(CF.household, 0)} kWh/a, Rechnungsposten mit ${CF.vat * 100} % MwSt, Förderung aus dem Bundeshaushalt ohne.`);
 }
 
 /* ---------- Gesamtaufbau ---------- */
@@ -834,7 +739,7 @@ function renderAll() {
   s1.append('Messwerte von '); html('b', '', s1, kTs === null ? '–' : fmtTime.format(kTs) + ' Uhr'); s1.append(document.createElement('br'));
   s1.append('Börsenpreis für '); html('b', '', s1, `${fmtTime.format(ns)}–${fmtTime.format(ns + SLOT)} Uhr`);
   const t0 = midnight(Date.now()), slots = slotsBetween(t0, addDays(t0, 1));
-  renderTiles(simulate(BAT, slots), slots); renderMix();
+  renderTiles(simulate(BAT, slots)); renderMix();
   renderStatus();
   if (!cf.started) cfLoad();
 }
