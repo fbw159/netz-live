@@ -797,7 +797,8 @@ function renderCalc(r) {
     if (b.range) { const a = b.total ? b.range[0] : b.from + b.range[0], c = b.total ? b.range[1] : b.from + b.range[1]; el('line', { x1: cx + bw / 2 + 8, x2: cx + bw / 2 + 8, y1: Y(a), y2: Y(c), stroke: C.ink, 'stroke-width': 2 }, svg); for (const v of [a, c]) el('line', { x1: cx + bw / 2 + 3, x2: cx + bw / 2 + 13, y1: Y(v), y2: Y(v), stroke: C.ink, 'stroke-width': 2 }, svg); }
     if (i < n - 1 && !b.total) el('line', { x1: x + bw, x2: cx + slot - bw / 2, y1: Y(b.to), y2: Y(b.to), stroke: C['ink-3'], 'stroke-width': 1, 'stroke-dasharray': '3 3' }, svg);
     const vy = up ? y0 - 7 : y1 + 17;
-    stxt(svg, { x: cx, y: vy, 'text-anchor': 'middle', 'font-size': b.total ? 18 : 16, 'font-weight': 700, fill: C.ink, class: 'm' }, fmtSigned(b.total ? b.to : b.v, 1));
+    const lv = b.total ? b.to : b.v;
+    stxt(svg, { x: cx, y: vy, 'text-anchor': 'middle', 'font-size': b.total ? 18 : 16, 'font-weight': 700, fill: C.ink, class: 'm' }, Math.abs(lv) < 0.05 ? '±0,0' : fmtSigned(lv, 1));
     b.l.forEach((t, k) => stxt(svg, { x: cx, y: P.y + P.h + 20 + k * 17, 'text-anchor': 'middle', 'font-size': 14, fill: b.total ? C.ink : C['ink-2'], 'font-weight': b.total ? 600 : 400 }, t));
   });
 }
