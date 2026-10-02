@@ -603,6 +603,7 @@ const CF = {
   gridExp: [1.0, 3.0],    // ct/kWh netto, Spanne für den EE-bedingten Netzausbau in den Netzentgelten (Schätzung, gerechnet wird die Mitte; Netzentgelte für Haushalte stiegen 2015→2025 von rund 6 auf 11 ct/kWh, vzbv)
   vat: 0.19,
   household: 3500,        // kWh/a
+  householdPrice: 39.6,   // ct/kWh Strompreis für Haushalte mit 3.500 kWh/a, BDEW-Strompreisanalyse Oktober 2025 (Beschaffung & Vertrieb 16,0 · Netz 10,9 · Steuern, Abgaben, Umlagen 12,7)
   gud: { fuel: 'gas', ef: 0.202, p: { eta: 58, vom: 3 } },  // neue GuD-Kraftwerke
   gudFixed: 100,          // €/kW/a Fixkosten der neuen GuD-Kraftwerke: Investition 1.000 €/kW, 6 % Zins, 25 Jahre (Annuität 78 €/kW/a) plus 22 €/kW/a feste Betriebskosten
   binMW: 1000, minBin: 24, // Angebotskurve: Breite der Stufen, Mindestzahl Stunden je Stufe
@@ -709,8 +710,10 @@ function renderCf() {
   $('#heroLabel').textContent = cheaper ? 'Strom an der Börse mit Erneuerbaren' : 'Strom an der Börse ohne Erneuerbare';
   const hv = $('#heroValue'); hv.replaceChildren();
   hv.append(fmt(Math.abs(r.dB), 1)); html('small', '', hv, 'ct/kWh'); html('span', 'pill cheap', hv, 'billiger');
+  // Auf die Stromrechnung: der Börsenpreis geht 1:1 in die Beschaffung (mit MwSt), Netz, Steuern, Abgaben und Vertrieb bleiben gleich
+  const dBill = r.dB * v, hp = CF.householdPrice, hpCf = hp + dBill;
   const hs = $('#heroSub'); hs.replaceChildren();
-  hs.append(`Im Mittel `); html('b', '', hs, `${fmt(Math.abs(r.pCf - r.pReal), 0)} €/MWh`); hs.append(` ${cheaper ? 'weniger' : 'mehr'}, verbrauchsgewichtet · für einen Haushalt mit ${fmt(CF.household, 0)} kWh rund `); html('b', '', hs, `${fmt(eurHH, 0)} €`); hs.append(' im Jahr (mit Mehrwertsteuer)');
+  hs.append(`Im Mittel `); html('b', '', hs, `${fmt(Math.abs(r.pCf - r.pReal), 0)} €/MWh`); hs.append(` ${cheaper ? 'weniger' : 'mehr'}, verbrauchsgewichtet. Auf der Stromrechnung: `); html('b', '', hs, `${fmt(hp, 1)} statt ${fmt(hpCf, 1)} ct/kWh`); hs.append(` (${fmtSigned(-dBill / hpCf * 100, 0)} %), bei ${fmt(CF.household, 0)} kWh rund `); html('b', '', hs, `${fmt(eurHH, 0)} €`); hs.append(` im Jahr ${cheaper ? 'weniger' : 'mehr'}.`);
   const box = $('#ktiles'); box.replaceChildren();
   function ktile(label, value, unit, cls, sub) {
     const t = html('div', 'ktile', box); html('div', 'label', t, label);
@@ -723,8 +726,9 @@ function renderCf() {
   const notes = $('#cfNotes'); notes.replaceChildren();
   const p1 = html('p', '', notes); html('b', '', p1, 'Rechnung: ');
   p1.append(`Stundenwerte von SMARD (Bundesnetzagentur, CC BY 4.0), letzte 12 volle Monate. Preis ohne Erneuerbare aus der Angebotskurve des heutigen Kohle- und Gasparks (Börsenpreis über konventioneller Erzeugung, trifft den realen Mittelwert auf ${fmtSigned(r.pFit - r.pReal, 1)} €/MWh) plus ${fmt(r.gNew / 1000, 0)} GW neue GuD-Kraftwerke zu Grenzkosten. Gas- und CO₂-Preis unverändert (bei ${fmt(r.gasTh / 1e6, 0)} TWh mehr Gasbedarf stiegen sie eher), Import/Export wie real.`);
-  const p2 = html('p', '', notes); html('b', '', p2, 'Nicht enthalten: ');
-  p2.append(`EEG-Förderung (${fmt(CF.eeg / 1e9, 1)} Mrd. €/a aus dem Bundeshaushalt) und Netzkosten der Erneuerbaren (Offshore-Netzumlage, Netzengpassmanagement, Netzausbau) sowie Bau und Betrieb der ${fmt(r.gNew / 1000, 0)} GW Gaskraftwerke, die es ohne Erneuerbare bräuchte. Die Zahl beschreibt allein den Börsenpreis.`);
+  const p2 = html('p', '', notes); html('b', '', p2, 'Stromrechnung: ');
+  p2.append(`Haushaltspreis ${fmt(CF.householdPrice, 1)} ct/kWh bei ${fmt(CF.household, 0)} kWh/a (BDEW-Strompreisanalyse, Oktober 2025); der Börsenpreis geht mit ${CF.vat * 100} % MwSt in die Beschaffung, Netzentgelte, Steuern, Abgaben und Vertrieb bleiben gleich. `);
+  html('b', '', p2, 'Nicht enthalten: '); p2.append(`EEG-Förderung (${fmt(CF.eeg / 1e9, 1)} Mrd. €/a aus dem Bundeshaushalt) und Netzkosten der Erneuerbaren (Offshore-Netzumlage, Netzengpassmanagement, Netzausbau) sowie Bau und Betrieb der ${fmt(r.gNew / 1000, 0)} GW Gaskraftwerke, die es ohne Erneuerbare bräuchte. Die Zahl beschreibt allein den Börsenpreis.`);
 }
 
 /* ---------- Gesamtaufbau ---------- */
