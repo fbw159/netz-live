@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Netz-Live Flur</title>
-<meta name="description" content="Netz-Live als Flur-Anzeige: Strommix Deutschland und Anlagen nach Strompreis, wechselt alle 20 Sekunden.">
+<title>Netz-Live</title>
+<meta name="description" content="Netz-Live als Flur-Anzeige: Strommix Deutschland und Anlagen nach Strompreis, wechselt alle 30 Sekunden.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
@@ -225,7 +225,7 @@ svg .m { font-family: var(--font-mono); }
     </div>
     <div class="notes">
       <p><sup>1</sup> Kosten je MWh Strom = Brennstoff ÷ Wirkungsgrad + CO₂ + Betrieb. Mittel März–Aug. 2026: CO₂ 76 €/t, Erdgas 51 €/MWh (TTF), Steinkohle 15,5 €/MWh (API2), Braunkohle 4 €/MWh (Annahme). Wirkungsgrad: GuD 58, Gasturbine 38, Steinkohle 43, Braunkohle 40 %.</p>
-      <p><sup>2</sup> Elektrolyseur 55 kWh/kg H₂, Erlös 6 €/kg (Annahme). Wärmepumpe COP 3 und Elektrodenkessel 99 % gegen Gaskessel 92 %. Batterie 88 %, Pumpspeicher 78 %, Fahrplan nach den Tagespreisen; Schwelle = mittlerer Lade- bzw. Entladepreis.</p>
+      <p><sup>2</sup> Elektrolyseur 55 kWh/kg H₂, Erlös 6 €/kg (Annahme). Wärmepumpe COP 3 und Elektrodenkessel 99 % gegen Gaskessel 92 %. Speicher (Batterie 88 %, Pumpspeicher 78 %) laden günstig und geben später trotz Verlust teurer ab; Ø = mittlerer Lade- bzw. Abgabepreis.</p>
       <p><sup>3</sup> Wind und PV: Beispielparks, skaliert aus der deutschen Einspeisung, ab Datenstand Prognose, Abregelung bei negativen Preisen. Ohne Netzentgelte, Steuern und Anfahrkosten. Daten: Bundesnetzagentur | SMARD.de (CC BY 4.0).</p>
     </div>
   </section>
@@ -770,7 +770,7 @@ function thresholdText(a, r) {
   if (a.type === 'ely' || a.type === 'heat') return 'bis ' + fmt(r.thresholds[0].v, 0) + ' €/MWh';
   if (a.type === 'ee') return a.p.curtail ? 'ab 0 €/MWh' : 'immer';
   const ch = r.thresholds.find(t => t.side === 'load'), dis = r.thresholds.find(t => t.side === 'gen');
-  return ch && dis ? `≤${fmt(ch.v, 0)} / ≥${fmt(dis.v, 0)} €/MWh` : 'kein Handel';
+  return ch && dis ? `Ø ${fmt(ch.v, 0)} / Ø ${fmt(dis.v, 0)} €/MWh` : 'kein Handel';
 }
 function bestWindow(from, to, len) {
   let best = null; const ps = slotsBetween(from, to).map(t => [t, val('price', t)]);
