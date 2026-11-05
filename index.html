@@ -4,33 +4,36 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Netz-Live</title>
-<meta name="description" content="Netz-Live als Flur-Anzeige: Stromverbrauch, Erneuerbaren-Anteil, Speicher und Strommix Deutschland, dazu Börsenpreis, Wind und Sonne über den Tag. Wechselt alle 30 Sekunden.">
+<meta name="description" content="Netz-Live als Flur-Anzeige des LTT: So setzt sich der Strommix in Deutschland gerade zusammen. Daten: Bundesnetzagentur | SMARD.de.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
-/* Flur-Anzeige: feste Bühne 1920 × 1080, wird passend auf den Bildschirm skaliert.
-   Oben Leiste mit Ansichtswechsel, je Ansicht Titel + Erklärsatz, Inhalt, Fußzeile. Bewusst nur dunkel. */
+/* Flur-Anzeige, eine Seite: feste Bühne 1920 × 1080, wird passend auf den Bildschirm skaliert. Bewusst nur dunkel.
+   Oben Leiste mit Uhr, darunter der Strommix gerade jetzt (Balken + Werte), unten der Spruch mit LTT-Logo. */
 :root {
   color-scheme: dark;
   --bg: #05080b;
   --stage: #0b1015;
   --surface: #121920;
-  --surface-2: #18222b;
   --surface-3: #24323e;
   --line: rgba(255,255,255,.08);
-  --line-2: rgba(255,255,255,.18);
+  --line-2: rgba(255,255,255,.16);
   --ink: #eef2f6;
   --ink-2: #aab6c2;
   --ink-3: #788693;
-  --grid: #1d2833;
-  --axis: #34434f;
   --good: #35c27a; --good-bg: rgba(53,194,122,.16);
   --warn: #f0b43c; --warn-bg: rgba(240,180,60,.16);
-  --bad: #ef5b5b; --bad-bg: rgba(239,91,91,.16);
-  --info: #5eaee8; --info-bg: rgba(94,174,232,.18);
-  --c-kohle: #8a5f3a; --c-gas: #ef7d2f; --c-sonst: #8fdcef; --c-bio: #4e9a4e; --c-wind: #5eaee8; --c-sonne: #f5c542;
-  --c-load: #ffffff; --c-import: rgba(255,255,255,.11); --c-pumpband: rgba(143,220,239,.5); --c-fc: #9aa8b6; --c-rest: rgba(170,182,194,.2);
+  /* Energieträger in der Reihenfolge des Balkens. Mit dem Farbprüfskript gegen die Bühne geprüft:
+     kleinster Abstand benachbarter Blöcke bei Farbsehschwäche ΔE 13,1, bei normalem Sehen 16,0.
+     Sonne bewusst hell (Sonnengelb), Sonstige bewusst grau (Restgröße). */
+  --c-wind: #418ad1;
+  --c-bio: #287c42;
+  --c-sonne: #f0c543;
+  --c-gas: #e07227;
+  --c-kohle: #975529;
+  --c-sonst: #8c9298;
+  --ltt: #8db6f2;                 /* helles LTT-Blau für den Spruch */
   --font-ui: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
 }
@@ -38,178 +41,129 @@
 [hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font-family: var(--font-ui); -webkit-font-smoothing: antialiased; }
 body.idle, body.idle * { cursor: none !important; }
-.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 #stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px; transform: translate(-50%, -50%); transform-origin: center center; background: var(--stage); overflow: hidden; }
 
 /* Leiste oben */
-.topbar { position: absolute; left: 0; right: 0; top: 0; height: 76px; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; column-gap: 30px; padding: 0 48px; border-bottom: 1px solid var(--line); background: var(--surface); }
-.topmid { display: flex; align-items: center; gap: 30px; }
-.logo { justify-self: end; display: block; height: 66px; width: auto; padding: 4px 8px; background: #fff; border-radius: 9px; }
+.topbar { position: absolute; left: 0; right: 0; top: 0; height: 76px; display: flex; align-items: center; justify-content: space-between; padding: 0 48px; border-bottom: 1px solid var(--line); background: var(--surface); }
 .brand { display: flex; align-items: baseline; gap: 14px; white-space: nowrap; }
 .brand b { font-size: 28px; font-weight: 700; letter-spacing: -.01em; display: inline-flex; align-items: center; gap: 12px; }
 .brand .dot { width: 13px; height: 13px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 5px var(--good-bg); }
 .brand .dot.off { background: var(--warn); box-shadow: 0 0 0 5px var(--warn-bg); }
 .brand span { font-size: 20px; color: var(--ink-2); }
-.tabs { display: flex; gap: 10px; }
-.tab { position: relative; padding: 11px 20px 13px; border-radius: 10px; font-size: 20px; color: var(--ink-3); overflow: hidden; white-space: nowrap; }
-.tab b { font-family: var(--font-mono); font-weight: 600; margin-right: 10px; }
-.tab.on { color: var(--ink); background: var(--surface-3); }
-.tab .bar { position: absolute; left: 0; bottom: 0; height: 4px; width: 0; background: var(--ink-2); }
-.paused { font-size: 16px; color: var(--warn); }
-.clockbox { display: flex; align-items: center; gap: 18px; }
-.status { font-size: 16px; color: var(--ink-2); text-align: right; line-height: 1.35; white-space: nowrap; }
-.status b { color: var(--ink); font-family: var(--font-mono); font-weight: 500; }
-.status.err { color: var(--warn); }
+.clockbox { display: flex; align-items: center; gap: 30px; }
+.stamp { font-size: 22px; color: var(--ink-2); white-space: nowrap; }
+.stamp b { color: var(--ink); font-family: var(--font-mono); font-weight: 500; }
+.stamp.old b { color: var(--warn); }
 .clock { font-family: var(--font-mono); font-size: 34px; font-weight: 500; letter-spacing: .01em; }
 
-/* Ansichten */
-.view { position: absolute; left: 0; right: 0; top: 76px; bottom: 0; opacity: 0; visibility: hidden; transition: opacity .9s ease, visibility 0s linear .9s; }
-.view.on { opacity: 1; visibility: visible; transition: opacity .9s ease, visibility 0s; }
-@media (prefers-reduced-motion: reduce) { .view, .view.on { transition: none; } }
-.vhead { position: absolute; left: 48px; right: 48px; top: 22px; height: 100px; display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; }
-.vhead h1 { margin: 0; font-size: 48px; font-weight: 600; letter-spacing: -.015em; line-height: 1.05; }
-.vhead p { margin: 10px 0 0; font-size: 22px; color: var(--ink-2); line-height: 1.35; max-width: 1500px; }
-.vhead .stamp { font-size: 18px; color: var(--ink-2); text-align: right; line-height: 1.5; white-space: nowrap; }
-.vhead .stamp b { color: var(--ink); font-family: var(--font-mono); font-weight: 500; }
-.card { position: absolute; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
-.card h2 { margin: 0; font-size: 23px; font-weight: 600; letter-spacing: -.005em; }
-.card h2 span { font-weight: 400; color: var(--ink-2); font-size: 19px; margin-left: 10px; }
-.vfoot { position: absolute; left: 48px; right: 48px; bottom: 16px; font-size: 15px; color: var(--ink-3); display: flex; justify-content: space-between; gap: 30px; line-height: 1.4; }
+/* Überschrift */
+.vhead { position: absolute; left: 48px; right: 48px; top: 100px; height: 112px; display: flex; align-items: flex-end; }
+.vhead h1 { margin: 0; font-size: 56px; font-weight: 600; letter-spacing: -.015em; line-height: 1.05; }
+
+/* Strommix: Anteile oben, Balken, Werte darunter */
+#mix { position: absolute; left: 48px; top: 238px; width: 1824px; height: 480px; transition: opacity .6s ease; }
+#mix.wait { opacity: 0; }
+.grp { position: absolute; top: 0; display: flex; align-items: baseline; gap: 18px; white-space: nowrap; }
+.grp.ee { left: 0; }
+.grp.conv { right: 0; }
+.grp .num { font-size: 132px; font-weight: 600; line-height: 1; letter-spacing: -.035em; }
+.grp .num small { font-size: 64px; font-weight: 500; letter-spacing: 0; margin-left: 10px; }
+.grp .word { font-size: 40px; font-weight: 500; color: var(--ink-2); }
+.grp.conv .num { font-size: 92px; }
+.grp.conv .num small { font-size: 48px; }
+.grp.conv .word { font-size: 34px; }
+.brk { position: absolute; top: 150px; height: 16px; border: 3px solid var(--ink-3); border-bottom: 0; border-radius: 7px 7px 0 0; transition: left 1.2s ease, width 1.2s ease; }
+.bar { position: absolute; left: 0; right: 0; top: 178px; height: 150px; }
+.blk { position: absolute; top: 0; height: 150px; border-radius: 8px; transition: left 1.2s ease, width 1.2s ease, opacity .6s ease; }
+.blk span { position: absolute; left: 20px; white-space: nowrap; color: #fff; }
+.blk.dark span { color: #0b0b0b; }
+.blk .t { top: 20px; font-size: 26px; font-weight: 500; }
+.blk .v { bottom: 18px; font-size: 56px; font-weight: 600; line-height: 1; letter-spacing: -.02em; }
+.legend { position: absolute; left: 0; right: 0; top: 362px; display: grid; grid-template-columns: repeat(3, auto) 2px repeat(3, auto); justify-content: space-between; column-gap: 24px; }
+.legend .sep { background: var(--line-2); }
+.li { display: grid; grid-template-columns: 26px minmax(0, 1fr); column-gap: 14px; row-gap: 6px; align-items: center; }
+.li i { width: 26px; height: 26px; border-radius: 6px; }
+.li .nm { font-size: 28px; font-weight: 500; white-space: nowrap; }
+.li .val { grid-column: 2; font-size: 26px; color: var(--ink-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.li .val b { color: var(--ink); font-weight: 600; }
+.loading { position: absolute; left: 0; right: 0; top: 440px; text-align: center; font-size: 30px; color: var(--ink-2); }
+
+/* Spruch mit Logo */
+.slogan { position: absolute; left: 48px; right: 48px; top: 772px; height: 230px; display: flex; align-items: center; gap: 40px; padding: 0 34px 0 56px; border-radius: 20px; border: 1px solid var(--line); background: linear-gradient(100deg, #183358 0%, #13213a 48%, #121920 100%); }
+.sl-text { flex: 1; min-width: 0; }
+.sl-text div { font-size: 76px; font-weight: 700; letter-spacing: -.02em; line-height: 1.08; white-space: nowrap; }
+.sl-text .l2 { color: var(--ltt); }
+.sl-name { font-size: 24px; color: var(--ink-2); text-align: right; line-height: 1.4; white-space: nowrap; }
+.logo { display: block; height: 170px; width: auto; padding: 10px 14px; background: #fff; border-radius: 14px; }
+
+.vfoot { position: absolute; left: 48px; right: 48px; bottom: 18px; font-size: 16px; color: var(--ink-3); line-height: 1.4; }
 .vfoot b { color: var(--ink-2); font-weight: 500; }
-.fshint { color: var(--ink-2); white-space: nowrap; }
-svg text { font-family: var(--font-ui); }
-svg .m { font-family: var(--font-mono); }
-
-/* Ansicht 1: drei große Kacheln links (Verbrauch, Erneuerbare, Speicher) */
-.tiles { position: absolute; left: 48px; top: 140px; width: 760px; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 300px 300px 180px; gap: 16px; }
-.tile { height: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px 24px 16px; display: grid; grid-template-columns: minmax(0, 1fr) 236px; grid-template-rows: auto 1fr auto; column-gap: 14px; min-width: 0; }
-.tile .label { grid-column: 1 / -1; font-size: 22px; color: var(--ink-2); display: flex; align-items: center; gap: 10px; white-space: nowrap; }
-.tile .label i { width: 14px; height: 14px; border-radius: 3px; flex: none; }
-.tile .label .pill { margin-left: auto; }
-.tile .value { font-size: 84px; font-weight: 600; line-height: 1.05; letter-spacing: -.025em; white-space: nowrap; align-self: center; }
-.tile .value small { font-size: 30px; font-weight: 500; color: var(--ink-2); margin-left: 8px; letter-spacing: 0; }
-.tile .value.word { font-size: 72px; }
-.tile .value.charge { color: var(--info); }
-.tile .value.dis { color: var(--good); }
-.tile .value.idle { color: var(--ink-2); }
-.tile .value.na { color: var(--ink-3); font-size: 48px; }
-.tile svg.spark { grid-column: 2; grid-row: 2; align-self: center; width: 236px; height: 84px; }
-.tile .sub { grid-column: 1 / -1; font-size: 19px; color: var(--ink-2); line-height: 1.32; align-self: end; }
-.tile .sub b { color: var(--ink); font-weight: 600; font-family: var(--font-mono); }
-.tile.sto { grid-template-rows: auto 1fr; }
-.tile.sto .value { grid-column: 1 / -1; }
-.pill { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; padding: 3px 11px; border-radius: 999px; background: var(--surface-3); color: var(--ink-2); white-space: nowrap; }
-.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-.pill.run, .pill.dis { background: var(--good-bg); color: var(--good); }
-.pill.charge { background: var(--info-bg); color: var(--info); }
-.pill.curt { background: var(--warn-bg); color: var(--warn); }
-.pill.bad { background: var(--bad-bg); color: var(--bad); }
-
-/* Ansicht 1: Diagramm rechts, darunter eine Legende mit den aktuellen Werten */
-#mixCard { left: 832px; right: 48px; top: 140px; height: 812px; padding: 16px 22px 8px; }
-#mixSvg { position: absolute; left: 14px; top: 56px; width: 1012px; height: 640px; }
-#mixLegend { position: absolute; left: 22px; right: 22px; top: 708px; }
-.lg-row { display: flex; flex-wrap: wrap; align-items: center; column-gap: 24px; row-gap: 6px; font-size: 18px; color: var(--ink-2); white-space: nowrap; }
-.lg-row span { display: inline-flex; align-items: center; gap: 9px; }
-.lg-row i { display: inline-block; width: 22px; height: 14px; border-radius: 3px; flex: none; }
-.lg-row i.line { height: 3px; border-radius: 2px; }
-.lg-row i.dash { height: 0; border-radius: 0; border-top: 3px dashed var(--c-load); }
-.lg-row b { font-family: var(--font-mono); font-weight: 600; color: var(--ink); }
-.lg-row .unit { color: var(--ink-3); }
-.lg-note { margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 15.5px; color: var(--ink-3); line-height: 1.38; }
-.lg-note b { color: var(--ink-2); font-weight: 600; }
-
-/* Ansicht 2: Aufbau wie Ansicht 1 – links drei Kacheln (#tiles2, Klasse .tiles), rechts Tagesdiagramm 0–24 Uhr */
-#dayCard { left: 832px; right: 48px; top: 140px; height: 812px; padding: 16px 22px 8px; }
-#daySvg { position: absolute; left: 14px; top: 56px; width: 1012px; height: 640px; }
-#dayLegend { position: absolute; left: 22px; right: 22px; top: 708px; }
-.loading { position: absolute; left: 0; right: 0; top: 45%; text-align: center; font-size: 28px; color: var(--ink-2); }
 </style>
 </head>
 <body>
 <div id="stage">
   <header class="topbar">
     <div class="brand"><b><span class="dot" id="liveDot"></span>Netz-Live</b><span>Strom in Deutschland</span></div>
-    <div class="topmid">
-      <div class="tabs">
-        <div class="tab on"><b>1</b>Übersicht<span class="bar"></span></div>
-        <div class="tab"><b>2</b>Wind, Sonne, Speicher<span class="bar"></span></div>
-      </div>
-      <span class="paused" id="paused" hidden>pausiert</span>
-      <div class="clockbox">
-        <div class="status" id="status">Daten werden geladen …</div>
-        <div class="clock" id="clock">--:--</div>
-      </div>
+    <div class="clockbox">
+      <div class="stamp" id="stamp"></div>
+      <div class="clock" id="clock">--:--</div>
     </div>
-    <img class="logo" alt="LTT Rostock – Lehrstuhl für Technische Thermodynamik" src="data:image/webp;base64,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">
   </header>
 
-  <!-- Ansicht 1 -->
-  <section class="view on" id="v1" aria-label="Übersicht">
-    <div class="vhead">
-      <div>
-        <h1>Strom in Deutschland, gerade jetzt</h1>
-      </div>
-      <div class="stamp" id="v1Stamp"></div>
-    </div>
-    <div class="tiles" id="tiles"></div>
-    <div class="card" id="mixCard">
-      <h2>Erzeugung und Verbrauch <span id="mixSub">Leistung in GW, letzte 18 Stunden und Prognose</span></h2>
-      <svg id="mixSvg" viewBox="0 0 1012 640" role="img" aria-label="Stromerzeugung nach Quelle, Verbrauch und Import"></svg>
-      <div id="mixLegend"></div>
-    </div>
-    <div class="vfoot">
-      <span><b>Daten:</b> Bundesnetzagentur | SMARD.de (CC BY 4.0). Messwerte mit rund einer Stunde Verzug, danach Prognose. Speicher: Beispiel-Batterie 10 MW / 20 MWh, Fahrplan nach den Börsenpreisen des Tages.</span>
-      <span class="fshint" id="fsHint">Vollbild: Klick oder F11</span>
-    </div>
-  </section>
+  <div class="vhead">
+    <h1>Strommix in Deutschland, gerade jetzt</h1>
+  </div>
 
-  <!-- Ansicht 2 -->
-  <section class="view" id="v2" aria-label="Wind, Sonne und Speicher heute">
-    <div class="vhead">
-      <div>
-        <h1>Wind, Sonne und Speicher heute</h1>
-      </div>
-      <div class="stamp" id="v2Stamp"></div>
-    </div>
-    <div class="tiles" id="tiles2"></div>
-    <div class="card" id="dayCard">
-      <h2>Heute 0–24 Uhr <span>Börsenpreis, Wind und Sonne</span></h2>
-      <svg id="daySvg" viewBox="0 0 1012 640" role="img" aria-label="Börsenpreis sowie Wind und Sonne heute"></svg>
-      <div id="dayLegend"></div>
-    </div>
-    <div class="vfoot">
-      <span><b>Daten:</b> Bundesnetzagentur | SMARD.de (CC BY 4.0). Wind und Sonne: ganz Deutschland, ab Datenstand Prognose. Elektrolyseur: Beispielanlage 10 MW, 55 kWh/kg H₂, Erlös 6 €/kg.</span>
-    </div>
+  <section id="mix" class="wait" aria-label="Strommix gerade jetzt">
+    <div class="grp ee"><span class="num" id="eeNum">–</span><span class="word">erneuerbar</span></div>
+    <div class="grp conv"><span class="num" id="convNum">–</span><span class="word">konventionell</span></div>
+    <div class="brk" id="brkEE"></div>
+    <div class="brk" id="brkConv"></div>
+    <div class="bar" id="bar" role="img" aria-label="Strommix"></div>
+    <div class="legend" id="legend"></div>
   </section>
   <div class="loading" id="loading">Daten werden geladen …</div>
+
+  <section class="slogan" aria-label="Werbung für den Lehrstuhl">
+    <div class="sl-text">
+      <div class="l1">Bock auf Energietechnik?</div>
+      <div class="l2">Komm zum LTT!</div>
+    </div>
+    <div class="sl-name">Lehrstuhl für<br>Technische Thermodynamik<br>Universität Rostock</div>
+    <img class="logo" alt="LTT Rostock – Lehrstuhl für Technische Thermodynamik" src="data:image/webp;base64,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">
+  </section>
+
+  <footer class="vfoot"><b>Datenquelle:</b> SMARD der Bundesnetzagentur (smard.de, CC BY 4.0). Die Daten haben etwa eine Stunde Verzug.</footer>
 </div>
 
 <script>
 'use strict';
-/* ---------- Konstanten ---------- */
-const TZ = 'Europe/Berlin', SLOT = 900000, DAY = 86400000, HOUR = 3600000;
+/* ---------- Einstellungen ---------- */
+const TZ = 'Europe/Berlin', SLOT = 900000, DAY = 86400000, HOUR = 3600000, MIN = 60000;
 const SMARD = 'https://www.smard.de/app/chart_data';
-// Stapelreihenfolge von unten nach oben: konventionell, Speicher, erneuerbar (Farbabstände geprüft)
-const GEN = [
-  { id: 'lig',   f: 1223, label: 'Braunkohle', th: true },
-  { id: 'coal',  f: 4069, label: 'Steinkohle', th: true },
-  { id: 'gas',   f: 4071, label: 'Erdgas', th: true },
-  { id: 'oth',   f: 1227, label: 'Sonstige konv.', th: true },
-  { id: 'pump',  f: 4070, label: 'Pumpspeicher' },
-  { id: 'hydro', f: 1226, label: 'Wasserkraft', ee: true },
-  { id: 'bio',   f: 4066, label: 'Biomasse & sonst. EE', ee: true },
-  { id: 'woff',  f: 1225, label: 'Wind Offshore', ee: true },
-  { id: 'won',   f: 4067, label: 'Wind Onshore', ee: true },
-  { id: 'pv',    f: 4068, label: 'Photovoltaik', ee: true },
+const REFRESH_MS = 5 * MIN;          // Daten alle 5 Minuten neu holen
+const RELOAD_HOUR = 3;               // Seite jede Nacht um 03:00 Uhr komplett neu laden
+const OLD_AFTER = 3 * HOUR;          // ältere Messwerte oben rechts gelb markieren
+// SMARD-Filter der realisierten Erzeugung (Viertelstunden, MWh je Viertelstunde)
+const SERIES = [
+  { id: 'won', f: 4067 }, { id: 'woff', f: 1225 },
+  { id: 'bio', f: 4066 }, { id: 'hydro', f: 1226 }, { id: 'othRen', f: 1228 },
+  { id: 'pv', f: 4068 }, { id: 'gas', f: 4071 },
+  { id: 'lig', f: 1223 }, { id: 'coal', f: 4069 },
+  { id: 'oth', f: 1227 }, { id: 'pump', f: 4070 },
 ];
-const EXTRA = [
-  { id: 'othRen', f: 1228 }, { id: 'load', f: 410 }, { id: 'resid', f: 4359 }, { id: 'pumpCons', f: 4387 },
-  { id: 'price', f: 4169, region: 'DE-LU' },
-  { id: 'fcPV', f: 125 }, { id: 'fcWon', f: 123 }, { id: 'fcWoff', f: 3791 }, { id: 'fcTotal', f: 122 }, { id: 'fcLoad', f: 411 },
+const REQUIRED = ['won', 'woff', 'bio', 'hydro', 'pv', 'gas', 'lig', 'coal']; // sonst gilt eine Viertelstunde als unvollständig
+const OPTIONAL = ['othRen', 'oth', 'pump'];  // kleinere Reihen: abwarten, wenn SMARD sie liefert (höchstens 2 Stunden)
+// Reihenfolge im Balken: erst erneuerbar, dann konventionell (SMARD zählt Pumpspeicher zu konventionell)
+const GROUPS = [
+  { id: 'wind',  label: 'Wind',              parts: ['won', 'woff'], ee: true },
+  { id: 'bio',   label: 'Biomasse & Wasser', parts: ['bio', 'hydro', 'othRen'], ee: true },
+  { id: 'sonne', label: 'Sonne',             parts: ['pv'], ee: true },
+  { id: 'gas',   label: 'Erdgas',            parts: ['gas'], ee: false },
+  { id: 'kohle', label: 'Kohle',             parts: ['lig', 'coal'], ee: false },
+  { id: 'sonst', label: 'Sonstige',          parts: ['oth', 'pump'], ee: false },
 ];
-const INSTALLED = { pv: 188, won: 186, woff: 189 };
-const REFRESH_MS = 5 * 60000;
+const DARK_TEXT = new Set(['sonne']);  // auf hellem Gelb dunkle Schrift
 
 /* ---------- Zeit (Europe/Berlin) ---------- */
 const partsFmt = new Intl.DateTimeFormat('en-US', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false, weekday: 'short' });
@@ -233,43 +187,19 @@ function midnight(ms) {
 function addDays(ms, n) { return midnight(midnight(ms) + n * DAY + 12 * HOUR); }
 function weekStart(ms) { const m = midnight(ms); const wd = tzParts(m).wd; return addDays(m, -((wd + 6) % 7)); }
 const fmtTime = new Intl.DateTimeFormat('de-DE', { timeZone: TZ, hour: '2-digit', minute: '2-digit' });
-const fmtTimeS = new Intl.DateTimeFormat('de-DE', { timeZone: TZ, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-const fmtDay = new Intl.DateTimeFormat('de-DE', { timeZone: TZ, weekday: 'short', day: '2-digit', month: '2-digit' });
-const fmtDayLong = new Intl.DateTimeFormat('de-DE', { timeZone: TZ, weekday: 'long', day: '2-digit', month: '2-digit' });
 const fmtDT = new Intl.DateTimeFormat('de-DE', { timeZone: TZ, weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
 /* ---------- Zahlen ---------- */
-const nf = {};
-function fmt(x, d = 1) {
-  if (x === null || x === undefined || Number.isNaN(x)) return '–';
-  const k = 'd' + d;
-  if (!nf[k]) nf[k] = new Intl.NumberFormat('de-DE', { minimumFractionDigits: d, maximumFractionDigits: d });
-  return nf[k].format(x);
-}
-function fmtSigned(x, d = 1) { if (x === null || x === undefined || Number.isNaN(x)) return '–'; return (x > 0 ? '+' : x < 0 ? '−' : '±') + fmt(Math.abs(x), d); }
-function niceStep(range, target) {
-  const raw = range / target, p = Math.pow(10, Math.floor(Math.log10(raw)));
-  for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= raw) return m * p;
-  return 10 * p;
-}
-function ticks(min, max, target = 5) {
-  if (max <= min) max = min + 1;
-  const step = niceStep(max - min, target), out = [];
-  const lo = Math.floor(min / step + 1e-9) * step, hi = Math.ceil(max / step - 1e-9) * step;
-  for (let v = lo; v <= hi + step * 1e-6; v += step) out.push(+v.toFixed(10));
-  return { step, values: out };
-}
-function esc(s) { return String(s); }
+const nf1 = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const fmtGW = mw => nf1.format(mw / 1000);
 
-/* ---------- Datenhaltung ---------- */
-const store = { v: {}, installed: { pv: null, won: null, woff: null, year: null }, weeks: new Set(), updated: null, error: null };
+/* ---------- Daten von SMARD ---------- */
+const store = { v: {}, weeks: new Set(), updated: null };
 function val(id, ts) { const m = store.v[id]; if (!m) return null; const x = m.get(ts); return x === undefined ? null : x; }
-function mw(id, ts) { const x = val(id, ts); return x === null ? null : x * 4; }
-function genActual(ts) { // Biomasse inkl. sonstige EE
-  const b = val('bio', ts); if (b === null) return null; return b + (val('othRen', ts) || 0);
+function ingest(id, series) {
+  const m = store.v[id] || (store.v[id] = new Map());
+  for (const [t, v] of series) { if (v !== null) m.set(t, v); else if (!m.has(t)) m.set(t, null); }
 }
-function seriesMW(id, ts) { return id === 'bio' ? (genActual(ts) === null ? null : genActual(ts) * 4) : mw(id, ts); }
-
 async function fetchJSON(url) {
   const r = await fetch(url, { cache: 'no-cache' });
   if (r.status === 404) return null;
@@ -282,498 +212,179 @@ async function pool(items, n, fn) {
   await Promise.all(Array.from({ length: Math.min(n, items.length) }, worker));
   return errs;
 }
-function ingest(id, series) {
-  const m = store.v[id] || (store.v[id] = new Map());
-  for (const [t, v] of series) { if (v !== null) m.set(t, v); else if (!m.has(t)) m.set(t, null); }
-}
 async function loadWeek(ws) {
-  const jobs = [...GEN, ...EXTRA].map(s => ({ s, url: `${SMARD}/${s.f}/${s.region || 'DE'}/${s.f}_${s.region || 'DE'}_quarterhour_${ws}.json` }));
-  const errs = await pool(jobs, 6, async j => { const d = await fetchJSON(j.url); if (d && d.series) ingest(j.s.id, d.series); });
+  const jobs = SERIES.map(s => ({ s, url: `${SMARD}/${s.f}/DE/${s.f}_DE_quarterhour_${ws}.json` }));
+  const errs = await pool(jobs, 4, async j => { const d = await fetchJSON(j.url); if (d && d.series) ingest(j.s.id, d.series); });
   if (errs.length === jobs.length) throw errs[0];
   store.weeks.add(ws);
-  return errs;
 }
-async function loadInstalled() {
-  for (const [k, f] of Object.entries(INSTALLED)) {
-    try {
-      const idx = await fetchJSON(`${SMARD}/${f}/DE/index_year.json`);
-      const ts = idx.timestamps[idx.timestamps.length - 1];
-      const d = await fetchJSON(`${SMARD}/${f}/DE/${f}_DE_year_${ts}.json`);
-      const last = d.series.filter(x => x[1] !== null).pop();
-      if (last) { store.installed[k] = last[1]; store.installed.year = tzParts(last[0] + 12 * HOUR).y; }
-    } catch (e) { /* Standardwerte bleiben */ }
-  }
-  if (store.installed.pv === null) store.installed.pv = 103000;
-  if (store.installed.won === null) store.installed.won = 67700;
-  if (store.installed.woff === null) store.installed.woff = 8800;
-}
-
-function slotsBetween(a, b) { const out = []; for (let t = a; t < b; t += SLOT) out.push(t); return out; }
-function nowSlot() { return Math.floor(Date.now() / SLOT) * SLOT; }
-function lastTs(id) { const m = store.v[id]; if (!m) return null; let best = null; for (const [t, v] of m) if (v !== null && (best === null || t > best)) best = t; return best; }
-
-/* Abgeleitete Werte je Viertelstunde */
-function derive(ts) {
-  const g = {}; let total = 0, ee = 0, any = false;
-  for (const s of GEN) { const v = seriesMW(s.id, ts); g[s.id] = v; if (v !== null) { any = true; total += v; if (s.ee) ee += v; } }
-  const load = mw('load', ts), price = val('price', ts);
-  let resid = mw('resid', ts);
-  if (resid === null && load !== null && g.won !== null && g.woff !== null && g.pv !== null) resid = load - g.won - g.woff - g.pv;
-  const fcWind = val('fcWon', ts) !== null && val('fcWoff', ts) !== null ? (val('fcWon', ts) + val('fcWoff', ts)) * 4 : null;
-  const fcPV = mw('fcPV', ts), fcTotal = mw('fcTotal', ts);
-  const fcWindPV = fcWind !== null && fcPV !== null ? fcWind + fcPV : null;
-  const windPV = any && g.won !== null && g.woff !== null && g.pv !== null ? g.won + g.woff + g.pv : null;
-  let share = null; // Wind+PV-Anteil an der Erzeugung (Ist, sonst Prognose)
-  if (windPV !== null && total > 0) share = windPV / total;
-  else if (fcWindPV !== null && fcTotal) share = fcWindPV / fcTotal;
-  // Saldo: Verbrauch (Netzlast + Pumpspeicher, der laut SMARD nicht in der Netzlast steckt) minus Erzeugung; positiv = Import
-  const pumpCons = mw('pumpCons', ts), saldo = any && load !== null ? load + (pumpCons || 0) - total : null;
-  return { ts, g, total: any ? total : null, ee: any ? ee : null, load, resid, price, fcWind, fcPV, fcWindPV, fcTotal, windPV, share, pumpCons, saldo };
-}
-
-/* ---------- Marktannahmen und Beispiel-Batterie ---------- */
-const G = { co2: 76, gas: 51, coal: 15.5 }; // €/t bzw. €/MWh, Mittelwerte März–August 2026
-// Erdgas: TTF-Preis gilt je MWh Brennwert (Hs), Wirkungsgrade und CO2-Faktor beziehen sich auf den Heizwert (Hi); Hs/Hi = 1,11
-const HS_HI = 1.11;
-function fuelPrice(a) { return a.fuel === 'gas' ? G.gas * HS_HI : a.fuel === 'coal' ? G.coal : a.p.fuelPrice; }
-function marginalCost(a) { const eta = a.p.eta / 100; return fuelPrice(a) / eta + G.co2 * a.ef / eta + a.p.vom; }
-const BAT = { id: 'bat', name: 'Batteriespeicher', short: 'Batterie', type: 'sto', p: { P: 10, E: 20, eta: 88 } };
-
-function planStorage(prices, P, E, eta) {
-  // Laden mit P, Entladen mit P·η: je Paar wird die geladene Energie abzüglich Verluste wieder abgegeben
-  const n = prices.length, dt = 0.25, ec = Math.sqrt(eta), ed = Math.sqrt(eta);
-  const power = new Array(n).fill(0);
-  const pairs = [];
-  for (let i = 0; i < n; i++) { if (prices[i] === null) continue; for (let j = i + 1; j < n; j++) { if (prices[j] === null) continue; const gain = prices[j] * eta - prices[i]; if (gain > 0.01) pairs.push([gain, i, j]); } }
-  pairs.sort((a, b) => b[0] - a[0]);
-  function feasible() { let soc = 0; for (let k = 0; k < n; k++) { const pw = power[k]; if (pw < 0) soc += -pw * dt * ec; else if (pw > 0) soc -= pw * dt / ed; if (soc < -1e-6 || soc > E + 1e-6) return false; } return true; }
-  for (const [, i, j] of pairs) { if (power[i] !== 0 || power[j] !== 0) continue; power[i] = -P; power[j] = P * eta; if (!feasible()) { power[i] = 0; power[j] = 0; } }
-  const soc = []; let s = 0; for (let k = 0; k < n; k++) { const pw = power[k]; if (pw < 0) s += -pw * dt * ec; else if (pw > 0) s -= pw * dt / ed; soc.push(s); }
-  return { power, soc };
-}
-
-/* Fahrplan und Kennzahlen des Speichers über die Viertelstunden `slots` (je Kalendertag ein Fahrplan gegen die Day-Ahead-Preise) */
-function simulate(a, slots) {
-  const data = slots.map(derive), n = slots.length;
-  const out = { run: new Array(n).fill(false), power: new Array(n).fill(null), known: new Array(n).fill(false), soc: null, thresholds: [], metrics: [], nowIdx: -1 };
-  const ns = nowSlot(); out.nowIdx = slots.indexOf(ns);
-  const eta = a.p.eta / 100; out.soc = new Array(n).fill(null);
-  let rev = 0, eCh = 0, eDis = 0, pCh = 0, pDis = 0;
-  let i = 0, d0 = midnight(slots[0]);
-  while (i < n) {
-    const d1 = addDays(d0, 1); let j = i; while (j < n && slots[j] < d1) j++;
-    const prices = data.slice(i, j).map(d => d.price);
-    if (prices.some(p => p !== null)) {
-      const plan = planStorage(prices, a.p.P, a.p.E, eta);
-      for (let k = i; k < j; k++) { const pw = plan.power[k - i]; out.known[k] = prices[k - i] !== null; out.power[k] = pw; out.run[k] = pw !== 0; out.soc[k] = plan.soc[k - i] / a.p.E; const p = prices[k - i]; if (p === null) continue; if (pw > 0) { rev += pw * 0.25 * p; eDis += pw * 0.25; pDis += pw * 0.25 * p; } else if (pw < 0) { rev += pw * 0.25 * p; eCh += -pw * 0.25; pCh += -pw * 0.25 * p; } }
-    }
-    i = j; d0 = d1;
-  }
-  out.avgCh = eCh ? pCh / eCh : null; out.avgDis = eDis ? pDis / eDis : null; out.eCh = eCh; out.eDis = eDis; out.rev = rev;
-  const k = out.nowIdx;
-  if (k < 0 || !out.known[k]) out.now = { cls: 'na', text: 'kein Preis' };
-  else { const pw = out.power[k]; out.now = pw > 0 ? { cls: 'dis', text: 'entlädt' } : pw < 0 ? { cls: 'charge', text: 'lädt' } : { cls: 'idle', text: 'wartet' }; out.now.soc = out.soc[k]; out.now.price = data[k].price; out.now.mw = pw; }
-  return out;
-}
-
-/* ---------- Beispielanlage für Ansicht 2: Elektrolyseur ---------- */
-const ELY = { id: 'ely', name: 'Elektrolyseur (PEM)', short: 'Elektrolyseur', type: 'ely', p: { P: 10, spec: 55, h2: 6, fee: 0 } };
-function elyBreakEven(a) { return a.p.h2 * 1000 / a.p.spec - a.p.fee; }
-/* Elektrolyseur: läuft mit voller Leistung, solange der Börsenpreis unter dem Erlös je MWh Strom liegt */
-function simulateEly(a, slots) {
-  const n = slots.length, be = elyBreakEven(a);
-  const out = { run: new Array(n).fill(false), power: new Array(n).fill(null), known: new Array(n).fill(false), thresholds: [{ v: be, side: 'load', label: a.short }], nowIdx: slots.indexOf(nowSlot()) };
-  slots.forEach((t, i) => { const p = val('price', t); if (p === null) return; out.known[i] = true; out.run[i] = p <= be; out.power[i] = out.run[i] ? a.p.P : 0; });
-  const k = out.nowIdx;
-  out.now = k < 0 || !out.known[k] ? { cls: 'na', text: 'kein Preis' } : out.run[k] ? { cls: 'run', text: 'läuft' } : { cls: 'idle', text: 'steht' };
-  return out;
-}
-
-/* ================= Flur-Anzeige ================= */
-const ROTATE_MS = 30000;            // Wechsel der Ansichten
-const $ = s => document.querySelector(s);
-const NS = 'http://www.w3.org/2000/svg';
-function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
-function stxt(parent, attrs, text) { const t = el('text', attrs, parent); t.textContent = text; return t; }
-function html(tag, cls, parent, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; if (parent) parent.appendChild(e); return e; }
-const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-const C = {};
-for (const n of ['stage', 'ink', 'ink-2', 'ink-3', 'grid', 'axis', 'surface', 'surface-2', 'surface-3', 'good', 'warn', 'bad', 'info', 'good-bg', 'warn-bg', 'info-bg', 'c-kohle', 'c-gas', 'c-sonst', 'c-bio', 'c-wind', 'c-sonne', 'c-load', 'c-import', 'c-pumpband', 'c-fc', 'c-rest']) C[n] = css('--' + n);
-const gw = x => x === null || x === undefined ? null : x / 1000;
-
-/* Bühne auf den Bildschirm skalieren */
-const stage = $('#stage');
-function fit() { const s = Math.min(innerWidth / 1920, innerHeight / 1080); stage.style.transform = `translate(-50%, -50%) scale(${s})`; }
-addEventListener('resize', () => { fit(); updateFsHint(); });
-fit();
-
-/* Zeitfenster Ansicht 1: letzte 18 h und 6 h Prognose */
-function windowBounds() { const start = Math.floor((Date.now() - 18 * HOUR) / HOUR) * HOUR; return { start, end: start + 24 * HOUR }; }
-function hourTicks(start, end, stepH) {
-  const out = [];
-  for (let t = Math.ceil(start / HOUR) * HOUR; t <= end; t += HOUR) { const p = tzParts(t); if (p.mi === 0 && p.h % stepH === 0) out.push({ t, label: p.h === 0 ? fmtDay.format(t) : String(p.h).padStart(2, '0') + ':00', major: p.h === 0 }); }
-  return out;
-}
-function nowPill(svg, x, y, label, right) {
-  const w = label.length * 9.6 + 18, rx = right === false || x + 8 + w > right ? x - 8 - w : x + 8;
-  el('rect', { x: rx, y, width: w, height: 26, rx: 6, fill: C.surface, stroke: C['ink-3'], 'stroke-width': 1 }, svg);
-  stxt(svg, { x: rx + w / 2, y: y + 18.5, 'text-anchor': 'middle', 'font-size': 16, fill: C.ink, class: 'm' }, label);
-}
-function kpiTs() { const g = lastTs('pv'), l = lastTs('load'); return g !== null && l !== null ? Math.min(g, l) : null; }
-function priceRank(p, list) {
-  const n = list.length; if (!n || p === null) return null;
-  const higher = list.filter(x => x > p).length, lower = list.filter(x => x < p).length, share = higher / n;
-  const cls = p < 0 ? 'charge' : share >= 2 / 3 ? 'run' : share <= 1 / 3 ? 'curt' : '';
-  const lbl = p < 0 ? 'negativ' : share >= 2 / 3 ? 'günstig' : share <= 1 / 3 ? 'teuer' : 'mittel';
-  const text = lower === 0 ? 'günstigste Viertelstunde des Tages' : higher === 0 ? 'teuerste Viertelstunde des Tages' : `günstiger als ${fmt(share * 100, 0)} % der Viertelstunden heute`;
-  return { cls, lbl, text };
-}
-function todayPrices() { const t0 = midnight(Date.now()); return slotsBetween(t0, addDays(t0, 1)).map(t => val('price', t)); }
-
-/* ---------- Ansicht 1: Kacheln ---------- */
-function sparkline(values, color) {
-  const W = 236, H = 84, n = values.length;
-  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, class: 'spark', 'aria-hidden': 'true' });
-  const vals = values.filter(v => v !== null); if (vals.length < 2) return svg;
-  let mn = Math.min(...vals), mx = Math.max(...vals); const span = Math.max(mx - mn, Math.abs(mx) * 0.15, 1); mn = Math.min(mn, mx - span); mx = mn + span; // Wertebereich der Daten, kleine Schwankungen bleiben flach
-  const X = i => i / (n - 1) * (W - 6), Y = v => H - 4 - (v - mn) / (mx - mn) * (H - 10);
-  let d = '', first = -1, last = -1;
-  values.forEach((v, i) => { if (v === null) return; if (first < 0) first = i; last = i; d += (d ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(v).toFixed(1); });
-  if (mn < 0 && mx > 0) el('line', { x1: 0, x2: W, y1: Y(0), y2: Y(0), stroke: C.axis, 'stroke-width': 1 }, svg);
-  el('path', { d: d + `L${X(last).toFixed(1)},${Y(mn).toFixed(1)}L${X(first).toFixed(1)},${Y(mn).toFixed(1)}Z`, fill: color, opacity: .14 }, svg);
-  el('path', { d, fill: 'none', stroke: color, 'stroke-width': 2.6, 'stroke-linejoin': 'round' }, svg);
-  el('circle', { cx: X(last), cy: Y(values[last]), r: 4.5, fill: color }, svg);
-  return svg;
-}
-function renderTiles(bat) {
-  const box = $('#tiles'); box.replaceChildren();
-  const kTs = kpiTs(), k = kTs !== null ? derive(kTs) : null;
-  const { start } = windowBounds();
-  const past = kTs !== null ? slotsBetween(start, kTs + SLOT).map(derive) : [];
-  function tile(o) {
-    const t = html('div', 'tile' + (o.cls ? ' ' + o.cls : ''), box), l = html('div', 'label', t);
-    if (o.color) { const i = document.createElement('i'); i.style.background = o.color; l.appendChild(i); }
-    l.appendChild(document.createTextNode(o.label));
-    const v = html('div', 'value' + (o.vcls ? ' ' + o.vcls : ''), t, o.value); if (o.unit) html('small', '', v, o.unit);
-    if (o.spark) t.appendChild(sparkline(o.spark, o.color || C['ink-2']));
-    if (o.side) { const sd = html('div', 'side', t); for (const part of o.side) { if (Array.isArray(part)) html('b', '', sd, part[0]); else if (part === '\n') sd.appendChild(document.createElement('br')); else sd.append(part); } }
-    if (o.sub) { const s = html('div', 'sub', t); for (const part of o.sub) { if (Array.isArray(part)) html('b', '', s, part[0]); else if (part === '\n') s.appendChild(document.createElement('br')); else s.append(part); } }
-  }
-  const f1 = x => x === null ? '–' : fmt(x, 1);
-  const sp = f => past.map(f);
-  tile({ label: 'Stromverbrauch', value: k ? f1(gw(k.load)) : '–', unit: 'GW', spark: sp(d => gw(d.load)), sub: ['Leistung, die ganz Deutschland gerade aus dem Netz bezieht'] });
-  const ee = d => d.total ? d.ee / d.total * 100 : null;
-  const bioHydro = d => d.g.bio !== null && d.g.hydro !== null ? gw(d.g.bio + d.g.hydro) : null;
-  tile({ label: 'Erneuerbare Energien', color: C.good, value: k ? fmt(ee(k), 0) : '–', unit: '%', spark: sp(ee),
-    sub: k ? ['Anteil an der Stromerzeugung in Deutschland', '\n', 'Wind ', [f1(gw(k.g.won + k.g.woff))], ' · Sonne ', [f1(gw(k.g.pv))], ' · Biomasse & Wasser ', [f1(bioHydro(k))], ' GW'] : ['–'] });
-  // Speicher: nur der Zustand der aktuellen Viertelstunde (Fahrplan der Beispiel-Batterie gegen die Tagespreise)
-  const nw = bat.now, word = { charge: 'laden', dis: 'entladen', idle: 'standby', na: '–' }[nw.cls];
-  tile({ label: 'Speicher', cls: 'sto', value: word, vcls: 'word ' + nw.cls, sub: null });
-}
-
-/* ---------- Ansicht 1: Diagramm (rechts, volle Höhe) ---------- */
-const MIX = [
-  { id: 'kohle', label: 'Kohle', parts: ['lig', 'coal'] },
-  { id: 'gas', label: 'Erdgas', parts: ['gas'] },
-  { id: 'sonst', label: 'Sonstige & Pumpspeicher', parts: ['oth', 'pump'] },
-  { id: 'bio', label: 'Biomasse & Wasser', parts: ['bio', 'hydro'] },
-  { id: 'wind', label: 'Wind', parts: ['won', 'woff'] },
-  { id: 'sonne', label: 'Sonne', parts: ['pv'] },
-];
-const MW = 1012, MH = 640;
-function renderMix() {
-  const svg = $('#mixSvg'); svg.replaceChildren();
-  const P = { x: 56, y: 36, w: MW - 56 - 14, h: MH - 36 - 38 };
-  const { start, end } = windowBounds(), slots = slotsBetween(start, end), n = slots.length, data = slots.map(derive);
-  const genEnd = lastTs('pv'), loadEnd = lastTs('load');
-  const X = i => P.x + i / (n - 1) * P.w;
-  const lastIdx = genEnd === null ? -1 : Math.min(n - 1, Math.floor((genEnd - start) / SLOT));
-  const loadIdx = loadEnd === null ? -1 : Math.min(n - 1, Math.floor((loadEnd - start) / SLOT));
-  const st = data.map((d, i) => { if (d.total === null || i > lastIdx) return null; let acc = 0; const L = {}; for (const g of MIX) { const v = g.parts.reduce((a, p) => a + (d.g[p] || 0), 0); L[g.id] = [acc, acc + v]; acc += v; } return { L, top: acc }; });
-  const cons = d => d.load === null ? null : d.load + (d.pumpCons || 0);
-  // Prognose ab Datenstand, gestapelt wie die Messwerte: übrige Erzeugung, Wind, Sonne, darüber Import bis zum Verbrauch
-  const fc = data.map((d, i) => {
-    if (i < Math.max(0, lastIdx)) return null;
-    const wind = val('fcWon', d.ts) !== null && val('fcWoff', d.ts) !== null ? (val('fcWon', d.ts) + val('fcWoff', d.ts)) * 4 : null, sun = mw('fcPV', d.ts), load = mw('fcLoad', d.ts), total = mw('fcTotal', d.ts);
-    if (wind === null || sun === null) return null;
-    // übrige Erzeugung = Prognose gesamt − Wind − Sonne; fehlt die Gesamtprognose, Rest bis zum Verbrauch wie früher
-    const other = total !== null ? Math.max(0, total - wind - sun) : load !== null ? Math.max(0, load - wind - sun) : 0;
-    return { wind, sun, load, other, top: other + wind + sun };
-  });
-  let ymax = 10;
-  data.forEach((d, i) => { if (st[i]) ymax = Math.max(ymax, gw(st[i].top)); if (i <= loadIdx && cons(d) !== null) ymax = Math.max(ymax, gw(cons(d))); const f = fc[i]; if (f) ymax = Math.max(ymax, gw(Math.max(f.load || 0, f.top))); });
-  const tk = ticks(0, ymax * 1.12, 7), yTop = tk.values[tk.values.length - 1];
-  const Y = mw => P.y + P.h - (mw / 1000) / yTop * P.h;
-  const xz = lastIdx >= 0 ? X(lastIdx) : P.x;
-  // Hintergrund Prognosebereich
-  if (lastIdx < n - 1) {
-    el('rect', { x: xz, y: P.y, width: P.x + P.w - xz, height: P.h, fill: C['surface-2'] }, svg);
-    if (xz > P.x) el('line', { x1: xz, x2: xz, y1: P.y - 26, y2: P.y + P.h, stroke: C['ink-3'], 'stroke-width': 1.5 }, svg);
-    if (xz - P.x > 130) stxt(svg, { x: xz - 10, y: P.y - 11, 'text-anchor': 'end', 'font-size': 18, fill: C['ink-2'], 'font-weight': 600 }, '◀ Messwerte');
-    if (P.x + P.w - xz > 120) stxt(svg, { x: xz + 10, y: P.y - 11, 'font-size': 18, fill: C['ink-2'], 'font-weight': 600 }, 'Prognose ▶');
-  }
-  // Raster
-  for (const v of tk.values) { el('line', { x1: P.x, x2: P.x + P.w, y1: Y(v * 1000), y2: Y(v * 1000), stroke: C.grid, 'stroke-width': 1 }, svg); stxt(svg, { x: P.x - 10, y: Y(v * 1000) + 6, 'text-anchor': 'end', 'font-size': 16, fill: C['ink-3'], class: 'm' }, fmt(v, 0)); }
-  stxt(svg, { x: P.x - 10, y: P.y - 11, 'text-anchor': 'end', 'font-size': 16, fill: C['ink-3'], class: 'm' }, 'GW');
-  // Messwerte: Stapel
-  for (const g of MIX) {
-    let d = '', back = '';
-    for (let i = 0; i <= lastIdx; i++) { if (!st[i]) continue; d += (d ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(st[i].L[g.id][1]).toFixed(1); back = 'L' + X(i).toFixed(1) + ',' + Y(st[i].L[g.id][0]).toFixed(1) + back; }
-    if (d) el('path', { d: d + back + 'Z', fill: C['c-' + g.id], stroke: C.surface, 'stroke-width': 1.2, 'stroke-linejoin': 'round' }, svg);
-  }
-  // Messwerte: Import-Lücke, Pumpspeicher-Band
-  const lim = Math.min(lastIdx, loadIdx);
-  let up = '', down = '', pu = '', pd = '', best = null;
-  for (let i = 0; i <= lim; i++) {
-    const d = data[i]; if (!st[i] || cons(d) === null) continue;
-    const top = st[i].top, c = cons(d), hi = Math.max(top, c);
-    up += (up ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(hi).toFixed(1); down = 'L' + X(i).toFixed(1) + ',' + Y(top).toFixed(1) + down;
-    pu += (pu ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(c).toFixed(1); pd = 'L' + X(i).toFixed(1) + ',' + Y(d.load).toFixed(1) + pd;
-    const gap = Y(top) - Y(d.load); if (i > 6 && i < lim - 6 && (!best || gap > best.gap)) best = { i, gap, mid: (Y(top) + Y(d.load)) / 2 };
-  }
-  if (up) el('path', { d: up + down + 'Z', fill: C['c-import'] }, svg);
-  if (pu) el('path', { d: pu + pd + 'Z', fill: C['c-pumpband'] }, svg);
-  if (best && best.gap > 34) stxt(svg, { x: Math.min(Math.max(X(best.i), P.x + 50), xz - 50), y: best.mid + 7, 'text-anchor': 'middle', 'font-size': 20, 'font-weight': 600, fill: C.ink }, 'Import');
-  let dl = ''; for (let i = 0; i <= loadIdx; i++) { const d = data[i]; if (d.load === null) continue; dl += (dl ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(d.load).toFixed(1); }
-  if (dl) el('path', { d: dl, fill: 'none', stroke: C['c-load'], 'stroke-width': 3.2, 'stroke-linejoin': 'round' }, svg);
-  // Prognose: grau = übrige Erzeugung, darauf helles Wind und Sonne, darüber Import-Lücke bis zum gestrichelten Verbrauch
-  const layer = (lo, hi) => { let a = '', b = ''; for (let i = 0; i < n; i++) { const f = fc[i]; if (!f) continue; a += (a ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(hi(f)).toFixed(1); b = 'L' + X(i).toFixed(1) + ',' + Y(lo(f)).toFixed(1) + b; } return a ? a + b + 'Z' : ''; };
-  const imp = f => f.load === null ? f.top : Math.max(f.top, f.load);
-  const pr = layer(() => 0, f => f.other), pw = layer(f => f.other, f => f.other + f.wind), ps = layer(f => f.other + f.wind, f => f.top), pi = layer(f => f.top, imp);
-  if (pr) el('path', { d: pr, fill: C['c-rest'] }, svg);
-  if (pw) el('path', { d: pw, fill: C['c-wind'], opacity: .72 }, svg);
-  if (ps) el('path', { d: ps, fill: C['c-sonne'], opacity: .78 }, svg);
-  if (pi) el('path', { d: pi, fill: C['c-import'] }, svg);
-  let dfl = ''; for (let i = 0; i < n; i++) { const f = fc[i]; if (!f || f.load === null) continue; dfl += (dfl ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(f.load).toFixed(1); }
-  if (dfl) el('path', { d: dfl, fill: 'none', stroke: C['c-load'], 'stroke-width': 2.6, 'stroke-dasharray': '9 6', 'stroke-linejoin': 'round' }, svg);
-  // Beschriftung im Prognosebereich an einer ruhigen Stelle
-  const fIdx = []; for (let i = 0; i < n; i++) if (fc[i]) fIdx.push(i);
-  if (fIdx.length > 8) {
-    const zx0 = X(fIdx[0]), zx1 = X(fIdx[fIdx.length - 1]), cx = (zx0 + zx1) / 2, mi = fIdx[Math.floor(fIdx.length / 2)], f = fc[mi];
-    const yRest = (Y(0) + Y(f.other)) / 2, yWS = (Y(f.other) + Y(f.top)) / 2, yImp = (Y(f.top) + Y(imp(f))) / 2;
-    const lab = (y, lines, size) => lines.forEach((t, k) => stxt(svg, { x: cx, y: y + (k - (lines.length - 1) / 2) * (size + 4) + size * .35, 'text-anchor': 'middle', 'font-size': size, 'font-weight': k === 0 ? 600 : 400, fill: C.ink }, t));
-    if (Y(0) - Y(f.other) > 74) lab(yRest, ['übrige Erzeugung', 'Kohle, Gas,', 'Biomasse, Wasser'], 16);
-    if (Y(f.other) - Y(f.top) > 44) lab(yWS, ['Wind + Sonne'], 16);
-    if (Y(f.top) - Y(imp(f)) > 30) lab(yImp, ['Import'], 16);
-    const mid = fIdx.slice(Math.floor(fIdx.length / 4), Math.ceil(fIdx.length * 3 / 4)).filter(i => fc[i].load !== null);
-    if (mid.length) { const yl = Math.min(...mid.map(i => Y(fc[i].load))) - 14; stxt(svg, { x: cx, y: Math.max(P.y + 54, yl), 'text-anchor': 'middle', 'font-size': 16, 'font-weight': 600, fill: C.ink }, 'erwarteter Verbrauch'); }
-  }
-  // Zeitachse
-  el('line', { x1: P.x, x2: P.x + P.w, y1: P.y + P.h, y2: P.y + P.h, stroke: C.axis, 'stroke-width': 1.5 }, svg);
-  for (const t of hourTicks(start, end, 3)) { const x = X((t.t - start) / SLOT); if (x > P.x + P.w - 26 || x < P.x + 20) continue; el('line', { x1: x, x2: x, y1: P.y + P.h, y2: P.y + P.h + (t.major ? 9 : 6), stroke: C.axis, 'stroke-width': 1.5 }, svg); stxt(svg, { x, y: P.y + P.h + 29, 'text-anchor': 'middle', 'font-size': 16, fill: t.major ? C['ink-2'] : C['ink-3'], 'font-weight': t.major ? 600 : 400, class: 'm' }, t.label); }
-  // Jetzt
-  const ns = nowSlot(); if (ns >= start && ns < end) { const x = X((ns - start) / SLOT); el('line', { x1: x, x2: x, y1: P.y, y2: P.y + P.h, stroke: C['ink-2'], 'stroke-width': 1.5 }, svg); nowPill(svg, x, P.y + 8, 'jetzt ' + fmtTime.format(Date.now()), P.x + P.w); }
-  renderReadout(genEnd !== null ? derive(Math.min(genEnd, loadEnd ?? genEnd)) : null, genEnd);
-}
-function renderReadout(k, genEnd) {
-  const box = $('#mixLegend'); box.replaceChildren();
-  const row = html('div', 'lg-row', box);
-  const kt = genEnd !== null ? fmtTime.format(Math.min(genEnd, lastTs('load') ?? genEnd)) : '–';
-  function item(kind, color, label, v) { const sp = html('span', '', row); const i = html('i', kind, sp); if (color) i.style.background = color; sp.append(label + ' '); html('b', '', sp, v === null || v === undefined ? '–' : fmt(v, 1)); }
-  if (k) {
-    const gv = g => gw(g.parts.reduce((a, p) => a + (k.g[p] || 0), 0)), byId = Object.fromEntries(MIX.map(g => [g.id, g]));
-    for (const id of ['sonne', 'wind', 'bio', 'sonst', 'gas', 'kohle']) item('', C['c-' + id], byId[id].label, gv(byId[id]));
-    item('line', C['c-load'], 'Netzlast', gw(k.load));
-    if (k.saldo !== null) item('', k.saldo >= 0 ? 'rgba(255,255,255,.22)' : 'transparent', k.saldo >= 0 ? 'Import' : 'Export', Math.abs(gw(k.saldo)));
-    html('span', 'unit', row, `GW · Messwerte ${kt} Uhr`);
-  }
-  const note = html('div', 'lg-note', box);
-  html('b', '', note, 'Rechts der senkrechten Linie: Prognose vom Vortag. '); note.append('Grau = übrige Erzeugung, darauf erwarteter Wind und Sonne, darüber Import bis zum erwarteten Verbrauch (gestrichelt).');
-}
-
-/* ---------- Ansicht 2: Wind, Sonne und Speicher heute (Aufbau wie Ansicht 1) ----------
-   Links drei Kacheln (Börsenpreis jetzt, Wind + Sonne, Elektrolyseur), rechts ein Tagesdiagramm 0–24 Uhr:
-   oben Börsenpreis, unten Wind und Sonne für ganz Deutschland. */
-function dayTimeLabels(svg, t0, t1, X0, dx, y) {
-  for (const t of hourTicks(t0, t1, 3)) {
-    const x = X0 + (t.t - t0) / SLOT * dx, first = t.t <= t0, last = t.t >= t1;
-    stxt(svg, { x, y, 'text-anchor': first ? 'start' : last ? 'end' : 'middle', 'font-size': 16, fill: C['ink-3'], class: 'm' }, first ? '00:00' : last ? '24:00' : t.label);
-  }
-}
-function renderTiles2(results) {
-  const box = $('#tiles2'); box.replaceChildren();
-  function tile(o) {
-    const t = html('div', 'tile' + (o.cls ? ' ' + o.cls : ''), box), l = html('div', 'label', t);
-    if (o.color) { const i = document.createElement('i'); i.style.background = o.color; l.appendChild(i); }
-    l.appendChild(document.createTextNode(o.label));
-    if (o.pill) html('span', 'pill ' + o.pill[0], l, o.pill[1]);
-    const v = html('div', 'value' + (o.vcls ? ' ' + o.vcls : ''), t, o.value); if (o.unit) html('small', '', v, o.unit);
-    if (o.spark) t.appendChild(sparkline(o.spark, o.color || C['ink-2']));
-    if (o.sub) { const s = html('div', 'sub', t); for (const part of o.sub) { if (Array.isArray(part)) html('b', '', s, part[0]); else if (part === '\n') s.appendChild(document.createElement('br')); else s.append(part); } }
-  }
-  // Börsenpreis jetzt, Verlauf seit Mitternacht
-  const ns = nowSlot(), p = val('price', ns), tp = todayPrices(), rk = priceRank(p, tp.filter(x => x !== null));
-  const t0 = midnight(Date.now());
-  tile({ label: 'Börsenpreis jetzt', pill: rk ? [rk.cls, rk.lbl] : null, value: p === null ? '–' : fmt(p, 1), unit: '€/MWh',
-    spark: slotsBetween(t0, ns + SLOT).map(t => val('price', t)),
-    sub: p === null ? ['noch kein Preis für diese Viertelstunde'] : ['= ', [fmt(p / 10, 1) + ' ct/kWh'], rk ? ' · ' + rk.text : ''] });
-  // Wind + Sonne, ganz Deutschland, Verlauf der letzten 18 Stunden
-  const kTs = lastTs('pv'), ws = d => d.g.won !== null && d.g.woff !== null && d.g.pv !== null ? d.g.won + d.g.woff + d.g.pv : null;
-  const k = kTs !== null ? derive(kTs) : null, inst = (store.installed.pv || 0) + (store.installed.won || 0) + (store.installed.woff || 0);
-  const past = kTs !== null ? slotsBetween(windowBounds().start, kTs + SLOT).map(derive) : [];
-  const now = k ? ws(k) : null;
-  tile({ label: 'Wind + Sonne', color: C['c-sonne'], value: now === null ? '–' : fmt(now / 1000, 1), unit: 'GW', spark: past.map(d => { const v = ws(d); return v === null ? null : v / 1000; }),
-    sub: now === null ? ['–'] : ['Auslastung ', [fmt(now / inst * 100, 0) + ' %'], ` von ${fmt(inst / 1000, 0)} GW installiert`, '\n', 'Sonne ', [fmt(k.g.pv / 1000, 1)], ' · Wind ', [fmt((k.g.won + k.g.woff) / 1000, 1)], ' GW'] });
-  // Elektrolyseur: nur der Zustand jetzt
-  const e = results.ely, word = { run: 'läuft', idle: 'steht', na: '–' }[e.now.cls], vcls = e.now.cls === 'run' ? 'charge' : e.now.cls;
-  tile({ label: 'Elektrolyseur', cls: 'sto', value: word, vcls: 'word ' + vcls, sub: [`läuft, solange der Börsenpreis unter ${fmt(e.thresholds[0].v, 0)} €/MWh liegt`] });
-}
-function renderDay2(results, slots) {
-  const svg = $('#daySvg'); svg.replaceChildren();
-  const W = 1012, P = { x: 56, w: W - 56 - 14 }, n = slots.length, dx = P.w / n, X = i => P.x + i * dx;
-  const ns = nowSlot(), t0 = slots[0], t1 = slots[n - 1] + SLOT, nx = ns >= t0 && ns < t1 ? P.x + (ns - t0) / SLOT * dx : null;
-  const A = { y: 40, h: 236 }, Cc = { y: 336, h: 256 };   // Preis, Wind + Sonne
-  const title = (y, text, sub) => { const t = stxt(svg, { x: P.x, y, 'font-size': 17, 'font-weight': 600, fill: C['ink-2'] }, text); if (sub) { const s = el('tspan', { 'font-weight': 400, fill: C['ink-3'], dx: 10 }, t); s.textContent = sub; } };
-  // 1) Börsenpreis
-  const prices = slots.map(t => val('price', t)), known = prices.filter(v => v !== null);
-  const tk = ticks(Math.min(0, ...(known.length ? known : [0])), Math.max(50, ...(known.length ? known : [50])) * 1.08, 4), yb = tk.values[0], yt = tk.values[tk.values.length - 1];
-  const Y = v => A.y + A.h - (v - yb) / (yt - yb) * A.h;
-  title(A.y - 14, 'Börsenpreis', '€/MWh');
-  for (const v of tk.values) { el('line', { x1: P.x, x2: P.x + P.w, y1: Y(v), y2: Y(v), stroke: v === 0 ? C.axis : C.grid, 'stroke-width': v === 0 ? 1.5 : 1 }, svg); stxt(svg, { x: P.x - 10, y: Y(v) + 5, 'text-anchor': 'end', 'font-size': 15, fill: C['ink-3'], class: 'm' }, fmt(v, 0)); }
-  const defs = el('defs', {}, svg), gr = el('linearGradient', { id: 'pg2', x1: 0, x2: 0, y1: 0, y2: 1 }, defs);
-  el('stop', { offset: '0', 'stop-color': C.ink, 'stop-opacity': .22 }, gr); el('stop', { offset: '1', 'stop-color': C.ink, 'stop-opacity': .03 }, gr);
-  let dPos = '', dNeg = '', pl = '', on = false;
-  prices.forEach((v, i) => {
-    if (v === null) { on = false; return; }
-    const y = Y(v), y0 = Y(0), seg = `M${X(i).toFixed(1)},${y0.toFixed(1)}V${y.toFixed(1)}H${(X(i) + dx).toFixed(1)}V${y0.toFixed(1)}Z`;
-    if (v >= 0) dPos += seg; else dNeg += seg;
-    pl += on ? `V${y.toFixed(1)}H${(X(i) + dx).toFixed(1)}` : `M${X(i).toFixed(1)},${y.toFixed(1)}H${(X(i) + dx).toFixed(1)}`; on = true;
-  });
-  el('path', { d: dPos, fill: 'url(#pg2)' }, svg); el('path', { d: dNeg, fill: C.bad, opacity: .55 }, svg);
-  el('path', { d: pl, fill: 'none', stroke: C.ink, 'stroke-width': 3, 'stroke-linejoin': 'round' }, svg);
-  // 3) Wind und Sonne, ganz Deutschland: Messwert, danach Prognose (heller)
-  const lt = lastTs('pv'), fcW = t => val('fcWon', t) !== null && val('fcWoff', t) !== null ? (val('fcWon', t) + val('fcWoff', t)) * 4 : null;
-  const pts = slots.map(t => {
-    const isM = lt !== null && t <= lt, w = isM ? (mw('won', t) !== null && mw('woff', t) !== null ? mw('won', t) + mw('woff', t) : null) : fcW(t), s = isM ? mw('pv', t) : mw('fcPV', t);
-    return w === null || s === null ? null : { w, s, fc: !isM };
-  });
-  const top = Math.max(5000, ...pts.filter(Boolean).map(q => q.w + q.s));
-  const tk2 = ticks(0, top / 1000 * 1.1, 4), yt2 = tk2.values[tk2.values.length - 1];
-  const Y2 = v => Cc.y + Cc.h - v / 1000 / yt2 * Cc.h;
-  title(Cc.y - 14, 'Wind und Sonne', 'GW, ganz Deutschland');
-  for (const v of tk2.values) { el('line', { x1: P.x, x2: P.x + P.w, y1: Y2(v * 1000), y2: Y2(v * 1000), stroke: v === 0 ? C.axis : C.grid, 'stroke-width': v === 0 ? 1.5 : 1 }, svg); stxt(svg, { x: P.x - 10, y: Y2(v * 1000) + 5, 'text-anchor': 'end', 'font-size': 15, fill: C['ink-3'], class: 'm' }, fmt(v, 0)); }
-  const band = (lo, hi, fc) => { let a = '', b = ''; pts.forEach((q, k) => { if (!q || q.fc !== fc) return; const x = X(k) + dx / 2; a += (a ? 'L' : 'M') + x.toFixed(1) + ',' + Y2(hi(q)).toFixed(1); b = 'L' + x.toFixed(1) + ',' + Y2(lo(q)).toFixed(1) + b; }); return a ? a + b + 'Z' : ''; };
-  for (const fc of [false, true]) {
-    const op = fc ? .5 : .95;
-    const dw = band(() => 0, q => q.w, fc), ds = band(q => q.w, q => q.w + q.s, fc);
-    if (dw) el('path', { d: dw, fill: C['c-wind'], opacity: op }, svg);
-    if (ds) el('path', { d: ds, fill: C['c-sonne'], opacity: op }, svg);
-  }
-  const iLast = lt === null ? -1 : slots.findIndex(t => t > lt);
-  if (iLast > 0 && iLast < n) { const x = X(iLast); el('line', { x1: x, x2: x, y1: Cc.y, y2: Cc.y + Cc.h, stroke: C['ink-3'], 'stroke-width': 1.2, 'stroke-dasharray': '4 5' }, svg); if (P.x + P.w - x > 100) stxt(svg, { x: x + 8, y: Cc.y + 18, 'font-size': 15, fill: C['ink-3'] }, 'Prognose ▶'); }
-  // Zeitachse, 3-h-Raster und Jetzt-Linie über alle drei Teile
-  for (const t of hourTicks(t0, t1, 3)) { const x = P.x + (t.t - t0) / SLOT * dx; if (x <= P.x + 1 || x >= P.x + P.w - 1) continue; for (const [y1, y2] of [[A.y, A.y + A.h], [Cc.y, Cc.y + Cc.h]]) el('line', { x1: x, x2: x, y1, y2, stroke: C.grid, 'stroke-width': 1, opacity: .8 }, svg); }
-  el('line', { x1: P.x, x2: P.x + P.w, y1: Cc.y + Cc.h, y2: Cc.y + Cc.h, stroke: C.axis, 'stroke-width': 1.5 }, svg);
-  dayTimeLabels(svg, t0, t1, P.x, dx, Cc.y + Cc.h + 26);
-  if (nx !== null) {
-    el('line', { x1: nx, x2: nx, y1: 6, y2: Cc.y + Cc.h, stroke: C.ink, 'stroke-width': 2 }, svg);
-    const p = val('price', ns); if (p !== null) el('circle', { cx: nx + dx / 2, cy: Y(p), r: 6, fill: C.ink, stroke: C.surface, 'stroke-width': 2.5 }, svg);
-    nowPill(svg, nx, 2, 'jetzt ' + fmtTime.format(Date.now()), P.x + P.w);
-  }
-  // Legende mit aktuellen Werten
-  const box = $('#dayLegend'); box.replaceChildren();
-  const row = html('div', 'lg-row', box);
-  function item(kind, color, label, v) { const sp = html('span', '', row); const ii = html('i', kind, sp); if (color) ii.style.background = color; sp.append(label + (v ? ' ' : '')); if (v) html('b', '', sp, v); }
-  item('line', C.ink, 'Börsenpreis');
-  const q = lt !== null ? pts[slots.indexOf(lt)] : null;
-  item('', C['c-sonne'], 'Sonne', q ? fmt(q.s / 1000, 1) + ' GW' : null);
-  item('', C['c-wind'], 'Wind', q ? fmt(q.w / 1000, 1) + ' GW' : null);
-}
-
-/* ---------- Gesamtaufbau ---------- */
-const state = { view: 0, paused: false, slot: null, timer: null, loading: false, refreshAt: 0, error: null, updated: null, loadedAt: Date.now() };
-function renderAll() {
-  if (!store.updated) return;
-  $('#loading').hidden = true;
-  state.slot = nowSlot();
-  const kTs = kpiTs(), ns = nowSlot();
-  const s1 = $('#v1Stamp'); s1.replaceChildren();
-  s1.append('Messwerte von '); html('b', '', s1, kTs === null ? '–' : fmtTime.format(kTs) + ' Uhr'); s1.append(document.createElement('br'));
-  s1.append('Börsenpreis für '); html('b', '', s1, `${fmtTime.format(ns)}–${fmtTime.format(ns + SLOT)} Uhr`);
-  const t0 = midnight(Date.now()), slots = slotsBetween(t0, addDays(t0, 1));
-  const results = { bat: simulate(BAT, slots), ely: simulateEly(ELY, slots) };
-  renderTiles(results.bat); renderMix();
-  const s2 = $('#v2Stamp'); s2.replaceChildren(); s2.append(fmtDayLong.format(Date.now())); s2.append(document.createElement('br'));
-  const lpv = lastTs('pv'); s2.append('Wind und Sonne: Messwerte bis '); html('b', '', s2, lpv === null ? '–' : fmtTime.format(lpv) + ' Uhr');
-  renderTiles2(results); renderDay2(results, slots);
-  renderStatus();
-}
-function renderStatus() {
-  const s = $('#status'); s.replaceChildren(); s.classList.toggle('err', !!state.error);
-  if (state.error && store.updated) { s.append('Keine Verbindung zu SMARD'); s.append(document.createElement('br')); s.append('letzte Daten '); html('b', '', s, fmtTime.format(store.updated)); }
-  else if (store.updated) { s.append('aktualisiert '); html('b', '', s, fmtTime.format(store.updated)); s.append(document.createElement('br')); s.append('Quelle SMARD.de'); }
-  else s.append(state.error ? 'SMARD nicht erreichbar, neuer Versuch läuft' : 'Daten werden geladen …');
-  $('#liveDot').classList.toggle('off', !!state.error);
-}
-
-/* ---------- Daten ---------- */
-function neededWeeks() {
-  const now = Date.now(), from = Math.min(windowBounds().start, midnight(now)), to = addDays(midnight(now), 2), set = new Set();
-  for (let t = weekStart(from); t < to; t = addDays(t, 7)) set.add(t);
-  return [...set];
-}
+// laufende Woche und, kurz nach Wochenbeginn, die Vorwoche (Wochenstart = Montag 00:00 Uhr)
+function neededWeeks() { const now = Date.now(); return [...new Set([weekStart(now - 12 * HOUR), weekStart(now)])]; }
 function prune() {
-  const lim = Date.now() - 3 * DAY;
+  const lim = Date.now() - 2 * DAY;
   for (const m of Object.values(store.v)) for (const t of [...m.keys()]) if (t < lim) m.delete(t);
   for (const w of [...store.weeks]) if (w + 8 * DAY < lim) store.weeks.delete(w);
 }
+// jüngste Viertelstunde, für die alle Erzeugungsarten gemeldet sind
+function newest(ids) {
+  const m = store.v.pv; if (!m) return null;
+  const now = Date.now(); let best = null;
+  for (const t of m.keys()) { if (t > now || (best !== null && t <= best)) continue; if (ids.every(id => val(id, t) !== null)) best = t; }
+  return best;
+}
+function latestSlot() {
+  const core = newest(REQUIRED); if (core === null) return null;
+  const present = OPTIONAL.filter(id => store.v[id] && [...store.v[id].values()].some(v => v !== null));
+  const full = present.length ? newest([...REQUIRED, ...present]) : core;
+  return full !== null && core - full <= 2 * HOUR ? full : core;
+}
+function mixAt(ts) {
+  const parts = GROUPS.map(g => ({ ...g, mw: Math.max(0, g.parts.reduce((a, p) => a + (val(p, ts) || 0), 0) * 4) }));
+  const total = parts.reduce((a, g) => a + g.mw, 0), ee = parts.filter(g => g.ee).reduce((a, g) => a + g.mw, 0);
+  if (!(total > 0)) return null;
+  // Prozente runden, so dass erneuerbar + konventionell = 100 und die Blöcke jeder Gruppe ihre Gruppe ergeben
+  const eePct = Math.round(ee / total * 100);
+  for (const [flag, sum] of [[true, eePct], [false, 100 - eePct]]) {
+    const g = parts.filter(p => p.ee === flag), raw = g.map(p => p.mw / total * 100), fl = raw.map(Math.floor);
+    let rest = sum - fl.reduce((a, b) => a + b, 0);
+    raw.map((r, i) => [r - fl[i], i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (rest > 0) { fl[i]++; rest--; } });
+    g.forEach((p, i) => { p.pct = fl[i]; });
+  }
+  return { ts, parts, total, ee, eePct, convPct: 100 - eePct };
+}
+
+/* ---------- Darstellung ---------- */
+const $ = s => document.querySelector(s);
+function html(tag, cls, parent, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; if (parent) parent.appendChild(e); return e; }
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const COLOR = Object.fromEntries(GROUPS.map(g => [g.id, css('--c-' + g.id)]));
+
+const BAR_W = 1824, GAP = 6, SPLIT = 24, PAD = 20;
+const FONT_T = '500 26px "IBM Plex Sans", "Segoe UI", sans-serif', FONT_V = '600 56px "IBM Plex Sans", "Segoe UI", sans-serif';
+const measure = document.createElement('canvas').getContext('2d');
+function textW(text, font) { measure.font = font; return measure.measureText(text).width; }
+
+// Balkenblöcke und Legende einmal anlegen, danach nur noch Werte ändern (keine Sprünge beim Aktualisieren)
+const BLK = {}, LEG = {};
+(function build() {
+  const bar = $('#bar'), leg = $('#legend');
+  for (const g of GROUPS) {
+    const b = html('div', 'blk' + (DARK_TEXT.has(g.id) ? ' dark' : ''), bar); b.style.background = COLOR[g.id]; b.style.left = '0px'; b.style.width = '0px';
+    BLK[g.id] = { el: b, t: html('span', 't', b), v: html('span', 'v', b) };
+    if (g.id === 'gas') html('div', 'sep', leg);
+    const li = html('div', 'li', leg), sw = html('i', '', li); sw.style.background = COLOR[g.id];
+    html('span', 'nm', li, g.label);
+    LEG[g.id] = html('span', 'val', li);
+  }
+})();
+
+function renderMix(mix) {
+  $('#eeNum').innerHTML = `${mix.eePct}<small>%</small>`;
+  $('#convNum').innerHTML = `${mix.convPct}<small>%</small>`;
+  const vis = mix.parts.filter(p => p.mw > 0);
+  const split = vis.some(p => p.ee) && vis.some(p => !p.ee);
+  const avail = BAR_W - Math.max(0, vis.length - 1) * GAP - (split ? SPLIT - GAP : 0);
+  let x = 0, prev = null, eeEnd = 0, convStart = BAR_W;
+  const aria = [];
+  for (const p of mix.parts) {
+    const B = BLK[p.id];
+    if (p.mw <= 0) { B.el.style.left = x + 'px'; B.el.style.width = '0px'; B.el.style.opacity = '0'; B.t.textContent = B.v.textContent = ''; }
+    else {
+      if (prev !== null) x += prev.ee && !p.ee ? SPLIT : GAP;
+      const w = avail * p.mw / mix.total, pct = p.pct + ' %';
+      B.el.style.left = x.toFixed(1) + 'px'; B.el.style.width = w.toFixed(1) + 'px'; B.el.style.opacity = '1';
+      // Beschriftung nur, wenn sie mit Rand in den Block passt
+      const vFits = textW(pct, FONT_V) + 2 * PAD <= w, tFits = vFits && textW(p.label, FONT_T) + 2 * PAD <= w;
+      B.v.textContent = vFits ? pct : ''; B.t.textContent = tFits ? p.label : '';
+      if (p.ee) eeEnd = x + w; else if (convStart === BAR_W) convStart = x;
+      x += w; prev = p;
+    }
+    LEG[p.id].replaceChildren();
+    html('b', '', LEG[p.id], fmtGW(p.mw)); LEG[p.id].append(` GW · ${p.pct} %`);
+    aria.push(`${p.label} ${p.pct} Prozent`);
+  }
+  const bEE = $('#brkEE'), bC = $('#brkConv');
+  bEE.hidden = !(mix.ee > 0); bEE.style.left = '0px'; bEE.style.width = eeEnd.toFixed(1) + 'px';
+  bC.hidden = !(mix.total - mix.ee > 0); bC.style.left = convStart.toFixed(1) + 'px'; bC.style.width = (BAR_W - convStart).toFixed(1) + 'px';
+  $('#bar').setAttribute('aria-label', 'Strommix: ' + aria.join(', '));
+}
+
+function renderAll() {
+  const ts = latestSlot(), mix = ts === null ? null : mixAt(ts);
+  const loading = $('#loading'), stamp = $('#stamp');
+  if (!mix) {
+    loading.hidden = false;
+    loading.textContent = state.error ? 'SMARD ist gerade nicht erreichbar, neuer Versuch läuft …' : (store.updated ? 'Keine aktuellen Messwerte vorhanden' : 'Daten werden geladen …');
+    stamp.replaceChildren(); stamp.classList.remove('old'); renderStatus(); return;
+  }
+  loading.hidden = true; $('#mix').classList.remove('wait');
+  renderMix(mix);
+  stamp.replaceChildren();
+  const today = midnight(Date.now()) === midnight(ts);
+  stamp.append('Messwerte von '); html('b', '', stamp, (today ? fmtTime.format(ts) : fmtDT.format(ts)) + ' Uhr');
+  stamp.classList.toggle('old', Date.now() - ts > OLD_AFTER);
+  renderStatus();
+}
+// Punkt oben links: grün = Verbindung zu SMARD in Ordnung, gelb = letzter Abruf fehlgeschlagen
+function renderStatus() { $('#liveDot').classList.toggle('off', !!state.error); }
+
+/* ---------- Ablauf ---------- */
+const state = { loading: false, refreshAt: 0, error: null, loadedAt: Date.now(), reloadDue: false, reloadTry: 0 };
 async function refresh() {
   if (state.loading) return;
   state.loading = true;
   try {
-    if (!store.installed.year) await loadInstalled();
     const cur = weekStart(Date.now());
     for (const w of neededWeeks()) if (!store.weeks.has(w) || w >= cur) await loadWeek(w);
     prune();
     store.updated = Date.now(); state.error = null;
   } catch (e) { state.error = e; }
   state.loading = false;
-  state.refreshAt = Date.now() + (state.error ? 60000 : REFRESH_MS);
-  renderAll(); renderStatus();
+  state.refreshAt = Date.now() + (state.error ? MIN : REFRESH_MS);
+  renderAll();
 }
 
-/* ---------- Ansichtswechsel ---------- */
-const VIEWS = [$('#v1'), $('#v2')], TABS = [...document.querySelectorAll('.tab')];
-function show(i) {
-  state.view = (i + VIEWS.length) % VIEWS.length;
-  VIEWS.forEach((v, k) => v.classList.toggle('on', k === state.view));
-  TABS.forEach((t, k) => {
-    t.classList.toggle('on', k === state.view);
-    const bar = t.querySelector('.bar'); bar.style.transition = 'none'; bar.style.width = '0';
-    if (k === state.view && !state.paused) { void bar.offsetWidth; bar.style.transition = `width ${ROTATE_MS}ms linear`; bar.style.width = '100%'; }
-  });
-  clearTimeout(state.timer);
-  if (!state.paused) state.timer = setTimeout(() => show(state.view + 1), ROTATE_MS);
+// Jede Nacht um 03:00 Uhr neu laden (frischer Speicher, neue Fassung von GitHub).
+// Online wird vorher geprüft, ob die Seite erreichbar ist – sonst läuft die alte weiter und es gibt alle 5 Minuten einen neuen Versuch.
+async function nightlyReload() {
+  state.reloadTry = Date.now() + 5 * MIN;
+  if (location.protocol === 'file:') { location.reload(); return; }
+  try { const r = await fetch(location.href.split('#')[0], { cache: 'no-store' }); if (r.ok) location.reload(); } catch (e) { /* offline: später nochmal */ }
 }
-addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); show(state.view + 1); }
-  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(state.view - 1); }
-  else if (e.key === ' ') { e.preventDefault(); state.paused = !state.paused; $('#paused').hidden = !state.paused; show(state.view); }
-  else if (e.key === 'r' || e.key === 'R') refresh();
-});
 
-/* ---------- Vollbild, Mauszeiger, Bildschirm wach halten ---------- */
-function isFull() { return !!document.fullscreenElement || (innerHeight >= screen.height - 2 && innerWidth >= screen.width - 2); }
-function updateFsHint() { $('#fsHint').hidden = isFull(); }
+/* Bühne auf den Bildschirm skalieren; alle 10 Minuten um wenige Pixel versetzt, damit sich nichts einbrennt */
+const stage = $('#stage');
+const SHIFT = [[0, 0], [2, 1], [3, -1], [1, -3], [-2, -2], [-3, 1], [-1, 3], [2, 2]];
+function fit() {
+  const s = Math.min(innerWidth / 1920, innerHeight / 1080), [dx, dy] = SHIFT[Math.floor(Date.now() / (10 * MIN)) % SHIFT.length];
+  stage.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(${s})`;
+}
+addEventListener('resize', fit);
+fit();
+
+/* Vollbild per Klick, Mauszeiger ausblenden, Bildschirm wach halten */
 addEventListener('click', () => { if (!document.fullscreenElement && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {}); });
-document.addEventListener('fullscreenchange', () => { updateFsHint(); setTimeout(fit, 50); });
+document.addEventListener('fullscreenchange', () => setTimeout(fit, 50));
 let idleTimer = null;
 addEventListener('mousemove', () => { document.body.classList.remove('idle'); clearTimeout(idleTimer); idleTimer = setTimeout(() => document.body.classList.add('idle'), 3000); });
 async function keepAwake() { try { if ('wakeLock' in navigator && document.visibilityState === 'visible') await navigator.wakeLock.request('screen'); } catch (e) { /* nicht unterstützt */ } }
 document.addEventListener('visibilitychange', keepAwake);
+addEventListener('keydown', e => { if (e.key === 'r' || e.key === 'R') refresh(); });
+// Beschriftungen in den Blöcken neu prüfen, sobald die Schrift geladen ist
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (store.updated) renderAll(); });
 
-/* ---------- Takt ---------- */
+/* Takt */
+let lastShift = -1;
 setInterval(() => {
-  $('#clock').textContent = fmtTime.format(Date.now());
-  if (!state.loading && state.refreshAt && Date.now() >= state.refreshAt) refresh();
-  if (!state.loading && store.updated && nowSlot() !== state.slot) renderAll();
-  // einmal pro Nacht komplett neu laden (frischer Speicher, neue Dateifassung)
-  const p = tzParts(Date.now());
-  if (p.h === 3 && p.mi === 30 && Date.now() - state.loadedAt > 2 * HOUR) location.reload();
+  const now = Date.now();
+  $('#clock').textContent = fmtTime.format(now);
+  if (!state.loading && state.refreshAt && now >= state.refreshAt) refresh();
+  const k = Math.floor(now / (10 * MIN)); if (k !== lastShift) { lastShift = k; fit(); }
+  if (!state.reloadDue && tzParts(now).h === RELOAD_HOUR && now - state.loadedAt > 2 * HOUR) state.reloadDue = true;
+  if (state.reloadDue && now >= state.reloadTry) nightlyReload();
 }, 1000);
 $('#clock').textContent = fmtTime.format(Date.now());
-updateFsHint(); keepAwake();
-show(0);
+keepAwake();
 refresh();
 </script>
 </body>
